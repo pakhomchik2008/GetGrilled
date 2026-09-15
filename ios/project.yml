@@ -20,6 +20,8 @@ packages:
   RevenueCat:
     url: https://github.com/RevenueCat/purchases-ios
     from: 5.0.0
+  Languages:
+    path: Languages
 
 targets:
   GetGrilled:
@@ -43,3 +45,7 @@ targets:
       - package: Runestone
       - package: Supabase
       - package: RevenueCat
+      - package: Languages
+        product: RunestoneJavaScriptLanguage
+      - package: Languages
+        product: RunestonePythonLanguage
