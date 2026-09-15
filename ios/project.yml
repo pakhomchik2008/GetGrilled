@@ -1,0 +1,45 @@
+name: GetGrilled
+options:
+  bundleIdPrefix: com.getgrilled
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "16.0"
+
+packages:
+  Runestone:
+    url: https://github.com/simonbs/Runestone
+    from: 0.4.0
+  Supabase:
+    url: https://github.com/supabase/supabase-swift
+    from: 2.0.0
+  RevenueCat:
+    url: https://github.com/RevenueCat/purchases-ios
+    from: 5.0.0
+
+targets:
+  GetGrilled:
+    type: application
+    platform: iOS
+    deploymentTarget: "16.0"
+    sources:
+      - path: GetGrilled/Sources
+      - path: GetGrilled/Resources
+    info:
+      path: GetGrilled/Resources/Info.plist
+      properties:
+        UILaunchScreen: {}
+        CFBundleDisplayName: GetGrilled
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.getgrilled.app
+        TARGETED_DEVICE_FAMILY: "1"
+        GENERATE_INFOPLIST_FILE: NO
+    dependencies:
+      - package: Runestone
+      - package: Supabase
+      - package: RevenueCat
