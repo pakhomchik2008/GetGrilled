@@ -27,6 +27,9 @@ final class RoundSessionViewModel: ObservableObject {
     @Published private(set) var overallSummary: String?
     @Published private(set) var roundSummaries: [SessionRoundSummary] = []
     @Published var errorMessage: String?
+    /// Set when the backend rejects round/start with its weekly free-limit 403 — drives the
+    /// paywall sheet instead of just showing errorMessage as inert text.
+    @Published var limitReached = false
 
     private(set) var sessionId: String?
     private(set) var currentRound: RoundRef?
@@ -242,7 +245,11 @@ final class RoundSessionViewModel: ObservableObject {
                 narrator.speak(final.content)
             }
         } catch {
-            errorMessage = "Connection issue: \(error.localizedDescription)"
+            if case APIError.server(403, _) = error {
+                limitReached = true
+            } else {
+                errorMessage = "Connection issue: \(error.localizedDescription)"
+            }
         }
     }
 

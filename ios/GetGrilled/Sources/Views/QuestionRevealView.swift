@@ -54,6 +54,7 @@ struct QuestionRevealView: View {
         .background(DesignTokens.bg.ignoresSafeArea())
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $viewModel.limitReached) { PaywallView() }
     }
 
     private func roundProgress(currentOrder: Int) -> some View {
