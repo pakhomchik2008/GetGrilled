@@ -1,9 +1,26 @@
 import Foundation
 
-enum APIError: Error {
+enum APIError: LocalizedError {
     case invalidResponse
     case server(status: Int, body: String)
     case decoding
+
+    /// Backend error endpoints return `{"error": "..."}` — surface that message directly
+    /// instead of a generic "operation couldn't be completed" string.
+    var errorDescription: String? {
+        switch self {
+        case .invalidResponse:
+            return "Invalid response from server."
+        case .server(let status, let body):
+            struct ErrorBody: Decodable { let error: String }
+            if let data = body.data(using: .utf8), let decoded = try? JSONDecoder().decode(ErrorBody.self, from: data) {
+                return decoded.error
+            }
+            return "Server error (\(status))."
+        case .decoding:
+            return "Couldn't read the server's response."
+        }
+    }
 }
 
 /// Stream events emitted by the interviewer chat endpoints, one per SSE `data:` line.

@@ -30,7 +30,9 @@ struct RoundAPIClient {
                     let (bytes, response) = try await session.bytes(for: request)
                     guard let http = response as? HTTPURLResponse, 200..<300 ~= http.statusCode else {
                         let status = (response as? HTTPURLResponse)?.statusCode ?? -1
-                        continuation.finish(throwing: APIError.server(status: status, body: ""))
+                        var body = ""
+                        for try await line in bytes.lines { body += line }
+                        continuation.finish(throwing: APIError.server(status: status, body: body))
                         return
                     }
                     for try await line in bytes.lines {

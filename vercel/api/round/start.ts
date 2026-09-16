@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { verifyAuth } from "../../lib/auth.js";
 import { buildRoundPrompt, roundOpenerMessage } from "../../lib/roundPrompts.js";
 import { appendRoundTranscript, getRound } from "../../lib/rounds.js";
-import { getSession } from "../../lib/sessions.js";
+import { checkWeeklyLimit, getSession } from "../../lib/sessions.js";
 import { startSSE, streamAssistantText, writeDone } from "../../lib/sse.js";
 import { nowIso } from "../../lib/transcript.js";
 
@@ -47,6 +47,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   if (!session.role_title || !session.seniority) {
     res.status(409).json({ error: "Session is missing personalization data" });
     return;
+  }
+
+  if (round.round_order === 0 && session.mode) {
+    const { allowed, limit } = await checkWeeklyLimit(userId, session.mode, sessionId);
+    if (!allowed) {
+      res.status(403).json({ error: `Weekly free limit reached (${limit}/week for ${session.mode} mode). Upgrade for unlimited sessions.` });
+      return;
+    }
   }
 
   const system = buildRoundPrompt(round.round_type, {
