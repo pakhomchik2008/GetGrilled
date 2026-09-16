@@ -1,4 +1,4 @@
-import type { SessionFeedback } from "./types.js";
+import type { RoundFeedback, RoundFeedbackStatus, SessionFeedback } from "./types.js";
 
 export class FeedbackParseError extends Error {}
 
@@ -8,6 +8,10 @@ function isScore(value: unknown): value is number {
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+function isRoundFeedbackStatus(value: unknown): value is RoundFeedbackStatus {
+  return value === "strong" || value === "good" || value === "needs_work";
 }
 
 // Validates the raw `submit_feedback` tool input from Claude into a SessionFeedback.
@@ -47,4 +51,31 @@ export function parseFeedbackToolInput(input: unknown): SessionFeedback {
     efficiency_notes: record.efficiency_notes as string,
     overall_summary: record.overall_summary as string
   };
+}
+
+// Validates the raw `submit_round_feedback` tool input for a single round.
+export function parseRoundFeedback(input: unknown): RoundFeedback {
+  if (typeof input !== "object" || input === null) {
+    throw new FeedbackParseError("Round feedback input is not an object");
+  }
+  const record = input as Record<string, unknown>;
+  if (!isRoundFeedbackStatus(record.status)) {
+    throw new FeedbackParseError("Field status must be one of strong, good, needs_work");
+  }
+  if (!isNonEmptyString(record.notes)) {
+    throw new FeedbackParseError("Missing or empty field: notes");
+  }
+  return { status: record.status, notes: record.notes };
+}
+
+// Validates the raw `submit_session_summary` tool input.
+export function parseSessionSummary(input: unknown): string {
+  if (typeof input !== "object" || input === null) {
+    throw new FeedbackParseError("Session summary input is not an object");
+  }
+  const record = input as Record<string, unknown>;
+  if (!isNonEmptyString(record.overall_summary)) {
+    throw new FeedbackParseError("Missing or empty field: overall_summary");
+  }
+  return record.overall_summary;
 }

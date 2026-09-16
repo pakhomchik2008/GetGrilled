@@ -1,15 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("./providers/anthropicProvider.js", () => ({
-  anthropicProvider: { name: "anthropic", streamText: vi.fn(), createFeedback: vi.fn() }
+  anthropicProvider: { name: "anthropic", streamText: vi.fn(), callTool: vi.fn() }
 }));
 vi.mock("./providers/openaiProvider.js", () => ({
-  openaiProvider: { name: "openai", streamText: vi.fn(), createFeedback: vi.fn() }
+  openaiProvider: { name: "openai", streamText: vi.fn(), callTool: vi.fn() }
 }));
 
 import { anthropicProvider } from "./providers/anthropicProvider.js";
 import { openaiProvider } from "./providers/openaiProvider.js";
-import { createFeedback, streamText } from "./llmClient.js";
+import { callTool, streamText } from "./llmClient.js";
+
+const dummyTool = { name: "submit_thing", description: "test tool", input_schema: { type: "object" as const, required: [], properties: {} } };
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -58,11 +60,17 @@ describe("streamText fallback", () => {
   });
 });
 
-describe("createFeedback fallback", () => {
+describe("callTool fallback", () => {
   it("falls back to OpenAI when Anthropic fails", async () => {
-    vi.mocked(anthropicProvider.createFeedback).mockRejectedValue(new Error("no credits"));
-    vi.mocked(openaiProvider.createFeedback).mockResolvedValue({ ok: true });
-    const result = await createFeedback("system", []);
+    vi.mocked(anthropicProvider.callTool).mockRejectedValue(new Error("no credits"));
+    vi.mocked(openaiProvider.callTool).mockResolvedValue({ ok: true });
+    const result = await callTool("system", [], dummyTool);
     expect(result).toEqual({ ok: true });
+  });
+
+  it("passes the tool definition through to the provider", async () => {
+    vi.mocked(anthropicProvider.callTool).mockResolvedValue({ ok: true });
+    await callTool("system", [], dummyTool);
+    expect(anthropicProvider.callTool).toHaveBeenCalledWith("system", [], dummyTool);
   });
 });

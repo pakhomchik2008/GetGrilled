@@ -20,7 +20,7 @@ export async function streamAssistantText(res: VercelResponse, system: string, m
   return streamText(system, messages, (text) => writeEvent(res, { type: "delta", text }));
 }
 
-export function writeDone(res: VercelResponse, sessionId: string): void {
-  writeEvent(res, { type: "done", sessionId });
+export function writeDone(res: VercelResponse, sessionId: string, extra?: Record<string, unknown>): void {
+  writeEvent(res, { type: "done", sessionId, ...extra });
   res.end();
 }

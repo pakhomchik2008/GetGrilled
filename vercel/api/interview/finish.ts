@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { verifyAuth } from "../../lib/auth.js";
-import { buildSystemPrompt } from "../../lib/anthropic.js";
+import { FEEDBACK_TOOL, buildSystemPrompt } from "../../lib/anthropic.js";
 import { parseFeedbackToolInput, FeedbackParseError } from "../../lib/feedbackSchema.js";
-import { createFeedback } from "../../lib/llmClient.js";
+import { callTool } from "../../lib/llmClient.js";
 import { getSession, logEvent, saveFeedback, setStatus } from "../../lib/sessions.js";
 import { assertTransition, InvalidTransitionError } from "../../lib/statusMachine.js";
 import { toLLMMessages, nowIso } from "../../lib/transcript.js";
@@ -51,7 +51,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   ];
 
   try {
-    const rawFeedback = await createFeedback(buildSystemPrompt(session.difficulty), messages);
+    const rawFeedback = await callTool(buildSystemPrompt(session.difficulty), messages, FEEDBACK_TOOL);
     const feedback = parseFeedbackToolInput(rawFeedback);
     await saveFeedback(sessionId, feedback);
     assertTransition("awaiting_feedback", "completed");

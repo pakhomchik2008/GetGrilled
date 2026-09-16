@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FeedbackParseError, parseFeedbackToolInput } from "./feedbackSchema.js";
+import { FeedbackParseError, parseFeedbackToolInput, parseRoundFeedback, parseSessionSummary } from "./feedbackSchema.js";
 
 const validInput = {
   correctness_score: 80,
@@ -37,5 +37,47 @@ describe("parseFeedbackToolInput", () => {
   it("rejects a missing field", () => {
     const { overall_summary, ...withoutSummary } = validInput;
     expect(() => parseFeedbackToolInput(withoutSummary)).toThrow(FeedbackParseError);
+  });
+});
+
+describe("parseRoundFeedback", () => {
+  const validRound = { status: "strong", notes: "Clear, concise, good energy." };
+
+  it("accepts well-formed round feedback", () => {
+    expect(parseRoundFeedback(validRound)).toEqual(validRound);
+  });
+
+  it("rejects an invalid status value", () => {
+    expect(() => parseRoundFeedback({ ...validRound, status: "amazing" })).toThrow(FeedbackParseError);
+  });
+
+  it("rejects a missing status", () => {
+    const { status, ...withoutStatus } = validRound;
+    expect(() => parseRoundFeedback(withoutStatus)).toThrow(FeedbackParseError);
+  });
+
+  it("rejects empty notes", () => {
+    expect(() => parseRoundFeedback({ ...validRound, notes: "" })).toThrow(FeedbackParseError);
+  });
+
+  it("rejects a non-object input", () => {
+    expect(() => parseRoundFeedback(null)).toThrow(FeedbackParseError);
+    expect(() => parseRoundFeedback("strong")).toThrow(FeedbackParseError);
+  });
+});
+
+describe("parseSessionSummary", () => {
+  it("accepts a well-formed summary", () => {
+    expect(parseSessionSummary({ overall_summary: "Solid across all three rounds." })).toBe(
+      "Solid across all three rounds."
+    );
+  });
+
+  it("rejects an empty summary", () => {
+    expect(() => parseSessionSummary({ overall_summary: "" })).toThrow(FeedbackParseError);
+  });
+
+  it("rejects a missing field", () => {
+    expect(() => parseSessionSummary({})).toThrow(FeedbackParseError);
   });
 });
