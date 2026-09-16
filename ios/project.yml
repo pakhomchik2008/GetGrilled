@@ -41,6 +41,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.getgrilled.app
         TARGETED_DEVICE_FAMILY: "1"
         GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_ENTITLEMENTS: GetGrilled/GetGrilled.entitlements
     dependencies:
       - package: Runestone
       - package: Supabase
