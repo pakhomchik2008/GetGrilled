@@ -11,10 +11,19 @@ export type RoundFeedbackStatus = "strong" | "good" | "needs_work";
 
 export const ROUND_ORDER: RoundType[] = ["intro", "technical", "behavioral"];
 
+export type ImageMediaType = "image/jpeg" | "image/png";
+
+export interface TranscriptImage {
+  mediaType: ImageMediaType;
+  base64: string;
+}
+
 export interface TranscriptMessage {
   role: "interviewer" | "candidate";
   content: string;
   timestamp: string;
+  /** A screenshot the candidate attached to this turn (e.g. a diagram) — optional. */
+  image?: TranscriptImage;
 }
 
 export interface SessionFeedback {
@@ -97,6 +106,10 @@ export function isSessionMode(value: unknown): value is SessionMode {
 
 export function isRoundType(value: unknown): value is RoundType {
   return value === "intro" || value === "technical" || value === "behavioral";
+}
+
+export function isImageMediaType(value: unknown): value is ImageMediaType {
+  return value === "image/jpeg" || value === "image/png";
 }
 
 export function difficultyForSeniority(seniority: Seniority): Difficulty {

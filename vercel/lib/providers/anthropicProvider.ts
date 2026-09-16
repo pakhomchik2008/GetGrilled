@@ -1,6 +1,23 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { MAX_TOKENS, MODEL, anthropic } from "../anthropic.js";
-import type { LLMProvider, ToolDefinition } from "./types.js";
+import type { LLMMessage, LLMProvider, ToolDefinition } from "./types.js";
+
+function toAnthropicMessages(messages: LLMMessage[]): Anthropic.MessageParam[] {
+  return messages.map((message) => ({
+    role: message.role,
+    content:
+      typeof message.content === "string"
+        ? message.content
+        : message.content.map((part) =>
+            part.type === "text"
+              ? { type: "text" as const, text: part.text }
+              : {
+                  type: "image" as const,
+                  source: { type: "base64" as const, media_type: part.mediaType, data: part.base64 }
+                }
+          )
+  }));
+}
 
 export const anthropicProvider: LLMProvider = {
   name: "anthropic",
@@ -10,7 +27,7 @@ export const anthropicProvider: LLMProvider = {
       model: MODEL,
       max_tokens: MAX_TOKENS,
       system,
-      messages: messages as Anthropic.MessageParam[]
+      messages: toAnthropicMessages(messages)
     });
     stream.on("text", onDelta);
     const finalMessage = await stream.finalMessage();
@@ -25,7 +42,7 @@ export const anthropicProvider: LLMProvider = {
       model: MODEL,
       max_tokens: MAX_TOKENS,
       system,
-      messages: messages as Anthropic.MessageParam[],
+      messages: toAnthropicMessages(messages),
       tools: [tool],
       tool_choice: { type: "tool", name: tool.name }
     });

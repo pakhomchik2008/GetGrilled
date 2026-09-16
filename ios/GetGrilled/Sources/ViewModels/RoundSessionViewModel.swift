@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 
 @MainActor
 final class RoundSessionViewModel: ObservableObject {
@@ -24,6 +25,8 @@ final class RoundSessionViewModel: ObservableObject {
     @Published var explanationText: String = ""
     @Published var language: CodeLanguage = .python
     @Published var selfEvalChoice: SelfEval?
+    /// A screenshot the candidate attached to explain their next message (e.g. a diagram).
+    @Published var pendingImage: UIImage?
     @Published private(set) var overallSummary: String?
     @Published private(set) var roundSummaries: [SessionRoundSummary] = []
     @Published var errorMessage: String?
@@ -59,6 +62,26 @@ final class RoundSessionViewModel: ObservableObject {
     func startManualSession() {
         planStageId = nil
         startSession()
+    }
+
+    /// "Back to dashboard" from the summary screen. Role/seniority/focus notes are left as-is
+    /// (convenient prefill for a next session) — everything session-specific is cleared.
+    func resetToSetup() {
+        narrator.stop()
+        phase = .setup
+        sessionId = nil
+        currentRound = nil
+        totalRounds = 3
+        planStageId = nil
+        messages = []
+        codeText = language.starterCode
+        explanationText = ""
+        pendingImage = nil
+        selfEvalChoice = nil
+        overallSummary = nil
+        roundSummaries = []
+        errorMessage = nil
+        limitReached = false
     }
 
     private func startSession() {
@@ -127,11 +150,38 @@ final class RoundSessionViewModel: ObservableObject {
     func send() {
         guard !isStreaming, let sessionId, let roundId = currentRound?.id else { return }
         let combined = combinedCandidateMessage()
-        guard !combined.isEmpty else { return }
-        messages.append(ChatMessage(role: .candidate, content: combined))
+        let image = encodedPendingImage()
+        guard !combined.isEmpty || image != nil else { return }
+        messages.append(ChatMessage(role: .candidate, content: combined.isEmpty ? "📎 Screenshot" : combined))
         codeText = language.starterCode
         explanationText = ""
-        Task { await runStream { try await self.api.sendRoundMessage(sessionId: sessionId, roundId: roundId, content: combined) } }
+        pendingImage = nil
+        Task {
+            await runStream {
+                try await self.api.sendRoundMessage(sessionId: sessionId, roundId: roundId, content: combined, imageBase64: image?.base64, imageMediaType: image?.mediaType)
+            }
+        }
+    }
+
+    func attachImage(_ image: UIImage) {
+        pendingImage = image
+    }
+
+    func removePendingImage() {
+        pendingImage = nil
+    }
+
+    /// Downscales to keep the upload small and re-encodes as JPEG — a full-res screenshot can
+    /// be several MB, more than the interviewer needs to read a diagram or pasted code.
+    private func encodedPendingImage() -> (base64: String, mediaType: String)? {
+        guard let pendingImage else { return nil }
+        let maxDimension: CGFloat = 1280
+        let scale = min(1, maxDimension / max(pendingImage.size.width, pendingImage.size.height))
+        let targetSize = CGSize(width: pendingImage.size.width * scale, height: pendingImage.size.height * scale)
+        let renderer = UIGraphicsImageRenderer(size: targetSize)
+        let resized = renderer.image { _ in pendingImage.draw(in: CGRect(origin: .zero, size: targetSize)) }
+        guard let data = resized.jpegData(compressionQuality: 0.6) else { return nil }
+        return (data.base64EncodedString(), "image/jpeg")
     }
 
     func sendChip(_ action: ChipAction) {
@@ -143,15 +193,19 @@ final class RoundSessionViewModel: ObservableObject {
     func finishRoundTapped() {
         guard !isStreaming, let sessionId, let roundId = currentRound?.id else { return }
         let combined = combinedCandidateMessage()
-        if !combined.isEmpty {
-            messages.append(ChatMessage(role: .candidate, content: combined))
+        let image = encodedPendingImage()
+        if !combined.isEmpty || image != nil {
+            messages.append(ChatMessage(role: .candidate, content: combined.isEmpty ? "📎 Screenshot" : combined))
             codeText = language.starterCode
             explanationText = ""
+            pendingImage = nil
         }
         let mode = self.mode
         Task {
-            if !combined.isEmpty {
-                await runStream { try await self.api.sendRoundMessage(sessionId: sessionId, roundId: roundId, content: combined) }
+            if !combined.isEmpty || image != nil {
+                await runStream {
+                    try await self.api.sendRoundMessage(sessionId: sessionId, roundId: roundId, content: combined, imageBase64: image?.base64, imageMediaType: image?.mediaType)
+                }
             }
             if mode == .test {
                 self.phase = .selfEval

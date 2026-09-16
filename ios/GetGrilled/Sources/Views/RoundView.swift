@@ -1,9 +1,11 @@
+import PhotosUI
 import SwiftUI
 
 struct RoundView: View {
     @ObservedObject var viewModel: RoundSessionViewModel
     @StateObject private var camera = CameraMirrorService()
     @State private var isCameraOn = false
+    @State private var photoItem: PhotosPickerItem?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -37,29 +39,44 @@ struct RoundView: View {
 
             Divider()
 
+            // Chips + code editor scroll independently, bounded in height, so the Send / I'm
+            // done buttons below always stay on screen instead of getting pushed off the
+            // bottom when the code editor is showing.
             VStack(spacing: 8) {
-                HStack(spacing: 8) {
-                    chip("Not sure") { viewModel.sendChip(.hint) }
-                    chip("Repeat question") { viewModel.sendChip(.repeatQuestion) }
-                    chip("Skip round") { viewModel.skipRound() }
-                    Spacer()
-                }
+                ScrollView {
+                    VStack(spacing: 8) {
+                        HStack(spacing: 8) {
+                            chip("Not sure") { viewModel.sendChip(.hint) }
+                            chip("Repeat question") { viewModel.sendChip(.repeatQuestion) }
+                            chip("Skip round") { viewModel.skipRound() }
+                            Spacer()
+                        }
 
-                if viewModel.currentRound?.type.usesCodeEditor == true {
-                    Picker("Language", selection: Binding(
-                        get: { viewModel.language },
-                        set: { viewModel.setLanguage($0) }
-                    )) {
-                        ForEach(CodeLanguage.allCases) { Text($0.displayName).tag($0) }
+                        if viewModel.currentRound?.type.usesCodeEditor == true {
+                            Picker("Language", selection: Binding(
+                                get: { viewModel.language },
+                                set: { viewModel.setLanguage($0) }
+                            )) {
+                                ForEach(CodeLanguage.allCases) { Text($0.displayName).tag($0) }
+                            }
+                            .pickerStyle(.segmented)
+
+                            CodeEditorView(text: $viewModel.codeText, language: viewModel.language)
+                                .frame(height: 140)
+                                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(UIColor.separator)))
+                        }
                     }
-                    .pickerStyle(.segmented)
+                }
+                .frame(maxHeight: 220)
 
-                    CodeEditorView(text: $viewModel.codeText, language: viewModel.language)
-                        .frame(height: 140)
-                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(UIColor.separator)))
+                if let pendingImage = viewModel.pendingImage {
+                    attachedImagePreview(pendingImage)
                 }
 
                 HStack(spacing: 8) {
+                    attachButton
+                    pasteButton
+
                     TextField("Explain your approach…", text: $viewModel.explanationText, axis: .vertical)
                         .textFieldStyle(.roundedBorder)
                         .lineLimit(2...4)
@@ -111,7 +128,11 @@ struct RoundView: View {
             InterviewerPortraitView().frame(width: 40, height: 40)
             VStack(alignment: .leading, spacing: 0) {
                 Text("Alex").font(.onest(13, .semibold)).foregroundStyle(DesignTokens.ink)
-                Text("your interviewer").font(.onest(11)).foregroundStyle(DesignTokens.inkSoft)
+                if let round = viewModel.currentRound {
+                    Text("\(round.type.displayName) · Round \(round.order + 1) of \(viewModel.totalRounds)")
+                        .font(.onest(11))
+                        .foregroundStyle(DesignTokens.inkSoft)
+                }
             }
             Spacer()
             Button {
@@ -126,6 +147,60 @@ struct RoundView: View {
         }
         .padding(.horizontal)
         .padding(.vertical, 8)
+    }
+
+    private var attachButton: some View {
+        PhotosPicker(selection: $photoItem, matching: .images) {
+            Image(systemName: "photo.on.rectangle")
+                .font(.system(size: 17))
+                .foregroundStyle(DesignTokens.accentStrong)
+                .frame(width: 40, height: 44)
+        }
+        .onChange(of: photoItem) { newItem in
+            Task {
+                if let data = try? await newItem?.loadTransferable(type: Data.self), let image = UIImage(data: data) {
+                    viewModel.attachImage(image)
+                }
+                photoItem = nil
+            }
+        }
+        .disabled(viewModel.isStreaming)
+    }
+
+    /// Pastes a screenshot copied to the clipboard (e.g. Cmd+Shift+4 on Mac, or a copied image).
+    private var pasteButton: some View {
+        Button {
+            if let image = UIPasteboard.general.image {
+                viewModel.attachImage(image)
+            }
+        } label: {
+            Image(systemName: "doc.on.clipboard")
+                .font(.system(size: 17))
+                .foregroundStyle(DesignTokens.accentStrong)
+                .frame(width: 40, height: 44)
+        }
+        .disabled(viewModel.isStreaming)
+    }
+
+    private func attachedImagePreview(_ image: UIImage) -> some View {
+        HStack(spacing: 8) {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFill()
+                .frame(width: 40, height: 40)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            Text("Screenshot attached")
+                .font(.onest(12))
+                .foregroundStyle(DesignTokens.inkSoft)
+            Spacer()
+            Button {
+                viewModel.removePendingImage()
+            } label: {
+                Image(systemName: "xmark.circle.fill").foregroundStyle(DesignTokens.inkFaint)
+            }
+        }
+        .padding(8)
+        .background(DesignTokens.surfaceSunken, in: RoundedRectangle(cornerRadius: 10))
     }
 
     private var micButton: some View {
