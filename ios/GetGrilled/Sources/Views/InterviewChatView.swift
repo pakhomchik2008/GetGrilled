@@ -25,7 +25,10 @@ struct InterviewChatView: View {
             Divider()
 
             VStack(spacing: 8) {
-                Picker("Language", selection: $viewModel.language) {
+                Picker("Language", selection: Binding(
+                    get: { viewModel.language },
+                    set: { viewModel.setLanguage($0) }
+                )) {
                     ForEach(CodeLanguage.allCases) { language in
                         Text(language.displayName).tag(language)
                     }
