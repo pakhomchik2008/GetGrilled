@@ -45,9 +45,13 @@ struct RoundView: View {
                         .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(UIColor.separator)))
                 }
 
-                TextField("Explain your approach…", text: $viewModel.explanationText, axis: .vertical)
-                    .textFieldStyle(.roundedBorder)
-                    .lineLimit(2...4)
+                HStack(spacing: 8) {
+                    TextField("Explain your approach…", text: $viewModel.explanationText, axis: .vertical)
+                        .textFieldStyle(.roundedBorder)
+                        .lineLimit(2...4)
+
+                    micButton
+                }
 
                 HStack {
                     Button("I'm done") { viewModel.finishRoundTapped() }
@@ -63,8 +67,43 @@ struct RoundView: View {
             if let errorMessage = viewModel.errorMessage {
                 Text(errorMessage).font(.footnote).foregroundStyle(.red).padding(.horizontal)
             }
+            if let voiceError = viewModel.voiceInputErrorMessage {
+                Text(voiceError).font(.footnote).foregroundStyle(.orange).padding(.horizontal)
+            }
         }
         .navigationTitle(viewModel.currentRound?.type.displayName ?? "Round")
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button {
+                    if viewModel.narrator.isSpeaking {
+                        viewModel.narrator.stop()
+                    } else if viewModel.narrator.isMuted {
+                        viewModel.narrator.isMuted = false
+                        viewModel.narrator.replay()
+                    } else {
+                        viewModel.narrator.isMuted = true
+                    }
+                } label: {
+                    Image(systemName: viewModel.narrator.isMuted ? "speaker.slash.fill" : (viewModel.narrator.isSpeaking ? "speaker.wave.2.fill" : "speaker.wave.2"))
+                }
+            }
+        }
+    }
+
+    private var micButton: some View {
+        Image(systemName: viewModel.speechRecognizer.isRecording ? "mic.fill" : "mic")
+            .font(.system(size: 18))
+            .foregroundStyle(viewModel.speechRecognizer.isRecording ? Color.red : Color.accentColor)
+            .frame(width: 44, height: 44)
+            .background(Color(.secondarySystemBackground), in: Circle())
+            .onLongPressGesture(minimumDuration: 0, maximumDistance: .infinity, pressing: { pressing in
+                if pressing {
+                    viewModel.startVoiceInput()
+                } else {
+                    viewModel.stopVoiceInput()
+                }
+            }, perform: {})
+            .disabled(viewModel.isStreaming)
     }
 
     private func chip(_ title: String, action: @escaping () -> Void) -> some View {

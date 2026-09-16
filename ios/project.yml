@@ -36,6 +36,8 @@ targets:
       properties:
         UILaunchScreen: {}
         CFBundleDisplayName: GetGrilled
+        NSMicrophoneUsageDescription: "Used to record your spoken answers during mock interviews. Recordings are transcribed on this device and never uploaded."
+        NSSpeechRecognitionUsageDescription: "Used to transcribe your spoken answers into text during mock interviews, entirely on this device."
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.getgrilled.app

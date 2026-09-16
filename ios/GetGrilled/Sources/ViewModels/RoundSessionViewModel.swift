@@ -31,11 +31,11 @@ final class RoundSessionViewModel: ObservableObject {
     private(set) var sessionId: String?
     private(set) var currentRound: RoundRef?
     private(set) var totalRounds: Int = 3
-    /// Set after finishing a round, shown next to the AI's own verdict once it arrives.
-    private var pendingSelfEvalForSummary: SelfEval?
-    private var lastRoundResult: RoundFinishResult?
 
     private let api = RoundAPIClient()
+    let speechRecognizer = SpeechRecognizer()
+    let narrator = Narrator()
+    @Published var voiceInputErrorMessage: String?
 
     var isLastRound: Bool { (currentRound?.order ?? 0) >= totalRounds - 1 }
 
@@ -73,6 +73,32 @@ final class RoundSessionViewModel: ObservableObject {
             codeText = newLanguage.starterCode
         }
         language = newLanguage
+    }
+
+    /// Push-to-talk: call on press-down. Transcribed text lands in `explanationText` on `stopVoiceInput`.
+    func startVoiceInput() {
+        guard !isStreaming else { return }
+        Task {
+            let status = await speechRecognizer.requestAuthorization()
+            guard status == .authorized else {
+                voiceInputErrorMessage = "Voice input needs microphone and speech recognition access — you can still type your answer."
+                return
+            }
+            voiceInputErrorMessage = nil
+            speechRecognizer.start { [weak self] transcript in
+                guard let self, !transcript.isEmpty else { return }
+                if self.explanationText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    self.explanationText = transcript
+                } else {
+                    self.explanationText += " " + transcript
+                }
+            }
+        }
+    }
+
+    /// Call on press-release.
+    func stopVoiceInput() {
+        speechRecognizer.stop()
     }
 
     func send() {
@@ -191,6 +217,9 @@ final class RoundSessionViewModel: ObservableObject {
                 case .done:
                     break
                 }
+            }
+            if let final = messages.first(where: { $0.id == placeholderId }) {
+                narrator.speak(final.content)
             }
         } catch {
             errorMessage = "Connection issue: \(error.localizedDescription)"
