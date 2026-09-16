@@ -3,11 +3,10 @@ import Supabase
 
 /// Wraps the Supabase client and guarantees a valid session for every backend call.
 ///
-/// Phase 1 has no sign-in UI yet (that's Phase 2), but the architecture requires every
-/// Vercel request to carry a verified Supabase JWT. Anonymous auth bridges that gap: it
-/// gives every install a real `auth.users` row and access token from day one, and
-/// Supabase supports converting an anonymous session into a permanent account later
-/// (email/password or Sign in with Apple) without changing the user's id.
+/// Every install starts with an anonymous session (a real `auth.users` id/JWT with no
+/// sign-in friction), which `signUp`/`signInWithApple` then upgrade in place via Supabase's
+/// identity-linking so the user id never changes. `signIn` (an existing account) replaces
+/// the anonymous session outright, same as any other provider.
 actor SupabaseAuthProvider {
     static let shared = SupabaseAuthProvider()
 
@@ -15,15 +14,52 @@ actor SupabaseAuthProvider {
 
     /// Returns a valid access token, signing in anonymously on first use.
     func accessToken() async throws -> String {
+        try await ensureSession().accessToken
+    }
+
+    @discardableResult
+    func ensureSession() async throws -> Session {
         if let session = client.auth.currentSession {
-            return session.accessToken
+            return session
         }
         do {
-            let session = try await client.auth.session
-            return session.accessToken
+            return try await client.auth.session
         } catch {
-            let session = try await client.auth.signInAnonymously()
-            return session.accessToken
+            return try await client.auth.signInAnonymously()
         }
+    }
+
+    var currentUser: User? {
+        client.auth.currentUser
+    }
+
+    /// Upgrades the current anonymous session to a real account, or creates one if signed out.
+    func signUp(email: String, password: String) async throws {
+        _ = try await ensureSession()
+        if client.auth.currentUser?.isAnonymous == true {
+            _ = try await client.auth.update(user: UserAttributes(email: email, password: password))
+        } else {
+            try await client.auth.signUp(email: email, password: password)
+        }
+    }
+
+    /// Signs into an existing account, replacing whatever session (anonymous or none) was active.
+    func signIn(email: String, password: String) async throws {
+        try await client.auth.signIn(email: email, password: password)
+    }
+
+    /// Links Sign in with Apple to the current anonymous session, or signs in if already permanent.
+    func signInWithApple(idToken: String, nonce: String) async throws {
+        _ = try await ensureSession()
+        let credentials = OpenIDConnectCredentials(provider: .apple, idToken: idToken, nonce: nonce)
+        if client.auth.currentUser?.isAnonymous == true {
+            _ = try await client.auth.linkIdentityWithIdToken(credentials: credentials)
+        } else {
+            _ = try await client.auth.signInWithIdToken(credentials: credentials)
+        }
+    }
+
+    func signOut() async throws {
+        try await client.auth.signOut()
     }
 }

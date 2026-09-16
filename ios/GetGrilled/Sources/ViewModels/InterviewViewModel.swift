@@ -27,6 +27,14 @@ final class InterviewViewModel: ObservableObject {
         Task { await runStream { try await self.api.startInterview(difficulty: difficulty) } }
     }
 
+    /// Restores an unfinished session (app relaunch mid-interview) from its saved transcript.
+    func resume(from detail: SessionDetail) {
+        errorMessage = nil
+        sessionId = detail.id.uuidString
+        messages = detail.transcript.map { ChatMessage(role: $0.role, content: $0.content) }
+        phase = .interviewing
+    }
+
     /// Sends the candidate's code + explanation as one chat turn.
     func send() {
         guard !isStreaming, let sessionId else { return }
