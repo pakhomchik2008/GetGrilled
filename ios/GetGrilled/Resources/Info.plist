@@ -28,5 +28,17 @@
 	<string>Used to transcribe your spoken answers into text during mock interviews, entirely on this device.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Shows your own camera feed to you during practice, like a mirror — it's never recorded or sent anywhere.</string>
+	<key>UIAppFonts</key>
+	<array>
+		<string>Onest-Regular.ttf</string>
+		<string>Onest-Medium.ttf</string>
+		<string>Onest-SemiBold.ttf</string>
+		<string>Onest-Bold.ttf</string>
+		<string>Onest-ExtraBold.ttf</string>
+		<string>IBMPlexMono-Regular.ttf</string>
+		<string>IBMPlexMono-Medium.ttf</string>
+		<string>IBMPlexMono-SemiBold.ttf</string>
+		<string>IBMPlexMono-Bold.ttf</string>
+	</array>
 </dict>
 </plist>

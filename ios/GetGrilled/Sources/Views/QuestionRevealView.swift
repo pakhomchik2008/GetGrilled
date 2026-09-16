@@ -9,11 +9,11 @@ struct QuestionRevealView: View {
             if let round = viewModel.currentRound {
                 VStack(spacing: 4) {
                     Text(round.type.displayName.uppercased())
-                        .font(.caption.bold())
-                        .foregroundStyle(Color.accentColor)
+                        .font(.onest(12, .bold))
+                        .foregroundStyle(DesignTokens.accentStrong)
                     Text("Round \(round.order + 1) of \(viewModel.totalRounds)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(.onest(12))
+                        .foregroundStyle(DesignTokens.inkSoft)
                 }
                 roundProgress(currentOrder: round.order)
             }
@@ -23,12 +23,14 @@ struct QuestionRevealView: View {
             VStack(spacing: 14) {
                 InterviewerPortraitView()
                     .frame(width: 148, height: 148)
-                Text("Alex · your interviewer").font(.caption.bold()).foregroundStyle(.secondary)
+                Text("Alex · your interviewer").font(.onest(12, .semibold)).foregroundStyle(DesignTokens.inkSoft)
 
                 if let question = viewModel.messages.last {
                     Text(question.content.isEmpty ? "…" : question.content)
+                        .font(.onest(16))
+                        .foregroundStyle(DesignTokens.ink)
                         .padding(16)
-                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
+                        .background(DesignTokens.surface, in: RoundedRectangle(cornerRadius: 16))
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
@@ -38,12 +40,18 @@ struct QuestionRevealView: View {
             Button {
                 viewModel.proceedToRound()
             } label: {
-                Text("I'm ready to answer →").frame(maxWidth: .infinity)
+                Text("I'm ready to answer →")
+                    .font(.onest(15, .bold))
+                    .foregroundStyle(DesignTokens.onAccent)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 4)
             }
             .buttonStyle(.borderedProminent)
+            .tint(DesignTokens.accent)
             .disabled(viewModel.isStreaming)
         }
         .padding()
+        .background(DesignTokens.bg.ignoresSafeArea())
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -52,7 +60,7 @@ struct QuestionRevealView: View {
         HStack(spacing: 6) {
             ForEach(0..<viewModel.totalRounds, id: \.self) { index in
                 Capsule()
-                    .fill(index < currentOrder ? Color.green : (index == currentOrder ? Color.accentColor : Color(.systemGray4)))
+                    .fill(index < currentOrder ? DesignTokens.success : (index == currentOrder ? DesignTokens.accent : DesignTokens.line))
                     .frame(height: 5)
             }
         }

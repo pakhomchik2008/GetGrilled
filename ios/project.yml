@@ -39,6 +39,16 @@ targets:
         NSMicrophoneUsageDescription: "Used to record your spoken answers during mock interviews. Recordings are transcribed on this device and never uploaded."
         NSSpeechRecognitionUsageDescription: "Used to transcribe your spoken answers into text during mock interviews, entirely on this device."
         NSCameraUsageDescription: "Shows your own camera feed to you during practice, like a mirror — it's never recorded or sent anywhere."
+        UIAppFonts:
+          - Onest-Regular.ttf
+          - Onest-Medium.ttf
+          - Onest-SemiBold.ttf
+          - Onest-Bold.ttf
+          - Onest-ExtraBold.ttf
+          - IBMPlexMono-Regular.ttf
+          - IBMPlexMono-Medium.ttf
+          - IBMPlexMono-SemiBold.ttf
+          - IBMPlexMono-Bold.ttf
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.getgrilled.app

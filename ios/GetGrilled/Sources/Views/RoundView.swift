@@ -85,6 +85,7 @@ struct RoundView: View {
                 Text(voiceError).font(.footnote).foregroundStyle(.orange).padding(.horizontal)
             }
         }
+        .background(DesignTokens.bg.ignoresSafeArea())
         .navigationTitle(viewModel.currentRound?.type.displayName ?? "Round")
         .onDisappear { camera.stop() }
         .toolbar {
@@ -109,8 +110,8 @@ struct RoundView: View {
         HStack(spacing: 10) {
             InterviewerPortraitView().frame(width: 40, height: 40)
             VStack(alignment: .leading, spacing: 0) {
-                Text("Alex").font(.caption.bold())
-                Text("your interviewer").font(.caption2).foregroundStyle(.secondary)
+                Text("Alex").font(.onest(13, .semibold)).foregroundStyle(DesignTokens.ink)
+                Text("your interviewer").font(.onest(11)).foregroundStyle(DesignTokens.inkSoft)
             }
             Spacer()
             Button {
@@ -158,8 +159,10 @@ struct RoundView: View {
         HStack {
             if message.role == .candidate { Spacer(minLength: 40) }
             Text(message.content.isEmpty ? "…" : message.content)
+                .font(.onest(15))
+                .foregroundStyle(DesignTokens.ink)
                 .padding(10)
-                .background(message.role == .interviewer ? Color(.secondarySystemBackground) : Color.accentColor.opacity(0.2))
+                .background(message.role == .interviewer ? DesignTokens.surfaceSunken : DesignTokens.accentWash)
                 .clipShape(RoundedRectangle(cornerRadius: 10))
             if message.role == .interviewer { Spacer(minLength: 40) }
         }
