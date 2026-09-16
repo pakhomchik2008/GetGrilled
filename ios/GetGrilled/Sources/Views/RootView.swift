@@ -6,6 +6,7 @@ struct RootView: View {
     @StateObject private var authViewModel = AuthViewModel()
     @State private var showingAccount = false
     @State private var showingHistory = false
+    @State private var showingPlans = false
     @State private var resumableLegacySession: SessionDetail?
     @State private var isResumingLegacy = false
 
@@ -17,6 +18,9 @@ struct RootView: View {
                 .toolbar {
                     if !isResumingLegacy && v2ViewModel.phase == .setup {
                         ToolbarItem(placement: .navigationBarLeading) {
+                            Button("Plans") { showingPlans = true }
+                        }
+                        ToolbarItem(placement: .navigationBarLeading) {
                             Button("History") { showingHistory = true }
                         }
                         ToolbarItem(placement: .navigationBarTrailing) {
@@ -27,6 +31,11 @@ struct RootView: View {
         }
         .sheet(isPresented: $showingAccount) { AuthView(viewModel: authViewModel) }
         .sheet(isPresented: $showingHistory) { HistoryView() }
+        .sheet(isPresented: $showingPlans) {
+            PlansView { plan, stage in
+                v2ViewModel.startPlanStage(plan: plan, stage: stage)
+            }
+        }
         .task { await checkForResumableLegacySession() }
         .alert("Resume interview?", isPresented: Binding(
             get: { resumableLegacySession != nil },

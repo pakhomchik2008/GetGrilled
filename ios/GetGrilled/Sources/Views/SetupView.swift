@@ -44,7 +44,7 @@ struct SetupView: View {
                 }
 
                 Button {
-                    viewModel.startSession()
+                    viewModel.startManualSession()
                 } label: {
                     Text("Start interview").frame(maxWidth: .infinity)
                 }

@@ -31,6 +31,7 @@ final class RoundSessionViewModel: ObservableObject {
     private(set) var sessionId: String?
     private(set) var currentRound: RoundRef?
     private(set) var totalRounds: Int = 3
+    private var planStageId: String?
 
     private let api = RoundAPIClient()
     let speechRecognizer = SpeechRecognizer()
@@ -39,7 +40,25 @@ final class RoundSessionViewModel: ObservableObject {
 
     var isLastRound: Bool { (currentRound?.order ?? 0) >= totalRounds - 1 }
 
-    func startSession() {
+    /// Launches a session for a specific plan stage: always Test mode, personalization pulled
+    /// from the plan, no Setup form shown.
+    func startPlanStage(plan: PrepPlanSummary, stage: PlanStageRow) {
+        mode = .test
+        roleTitle = plan.role_title
+        seniority = plan.seniority
+        focusNotes = stage.focus_description
+        planStageId = stage.id
+        startSession()
+    }
+
+    /// Entry point for the manual Setup form — ensures we're not accidentally still tied to a
+    /// previous plan stage.
+    func startManualSession() {
+        planStageId = nil
+        startSession()
+    }
+
+    private func startSession() {
         guard !roleTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         errorMessage = nil
         Task {
@@ -48,7 +67,8 @@ final class RoundSessionViewModel: ObservableObject {
                     mode: mode,
                     roleTitle: roleTitle.trimmingCharacters(in: .whitespacesAndNewlines),
                     seniority: seniority,
-                    focusNotes: focusNotes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : focusNotes
+                    focusNotes: focusNotes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : focusNotes,
+                    planStageId: planStageId
                 )
                 sessionId = response.sessionId
                 currentRound = response.round

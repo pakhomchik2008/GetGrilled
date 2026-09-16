@@ -36,4 +36,15 @@ struct SupabaseDataService {
             .value
         return sessions.first
     }
+
+    func listPlans() async throws -> [PrepPlanSummary] {
+        _ = try await SupabaseAuthProvider.shared.ensureSession()
+        let client = await self.client()
+        return try await client
+            .from("prep_plans")
+            .select("id, role_title, seniority, company_context, focus_notes, created_at, plan_stages(*)")
+            .order("created_at", ascending: false)
+            .execute()
+            .value
+    }
 }
