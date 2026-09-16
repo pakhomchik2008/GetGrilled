@@ -55,6 +55,52 @@ export async function createV2Session(input: CreateV2SessionInput): Promise<stri
   return data.id as string;
 }
 
+export async function getSubscriptionStatus(userId: string): Promise<"free" | "paid"> {
+  const { data, error } = await supabaseAdmin
+    .from("users")
+    .select("subscription_status")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data?.subscription_status as "free" | "paid" | undefined) ?? "free";
+}
+
+const FREE_WEEKLY_LIMIT: Record<SessionMode, number> = { test: 3, competition: 2 };
+
+// Sliding 7-day window, counted by mode, per docs/v2-technical-spec.md §2.
+// `excludeSessionId` omits the session being checked itself, since its row
+// already exists by the time round/start runs the check.
+export async function countRecentSessions(userId: string, mode: SessionMode, excludeSessionId: string): Promise<number> {
+  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const { count, error } = await supabaseAdmin
+    .from("interview_sessions")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("mode", mode)
+    .neq("id", excludeSessionId)
+    .gte("started_at", since);
+  if (error) throw error;
+  return count ?? 0;
+}
+
+export async function checkWeeklyLimit(userId: string, mode: SessionMode, sessionId: string): Promise<{ allowed: boolean; limit: number; used: number }> {
+  const status = await getSubscriptionStatus(userId);
+  const limit = FREE_WEEKLY_LIMIT[mode];
+  if (status === "paid") {
+    return { allowed: true, limit, used: 0 };
+  }
+  const used = await countRecentSessions(userId, mode, sessionId);
+  return { allowed: used < limit, limit, used };
+}
+
+export async function setSubscriptionStatus(userId: string, status: "free" | "paid"): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("users")
+    .update({ subscription_status: status })
+    .eq("id", userId);
+  if (error) throw error;
+}
+
 export async function getSession(sessionId: string): Promise<InterviewSessionRow | null> {
   const { data, error } = await supabaseAdmin
     .from("interview_sessions")
