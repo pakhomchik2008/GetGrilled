@@ -7,6 +7,7 @@ struct RootView: View {
     @State private var showingAccount = false
     @State private var showingHistory = false
     @State private var showingPlans = false
+    @State private var showingPaywall = false
     @State private var resumableLegacySession: SessionDetail?
     @State private var isResumingLegacy = false
 
@@ -24,6 +25,9 @@ struct RootView: View {
                             Button("History") { showingHistory = true }
                         }
                         ToolbarItem(placement: .navigationBarTrailing) {
+                            Button("Upgrade") { showingPaywall = true }
+                        }
+                        ToolbarItem(placement: .navigationBarTrailing) {
                             Button("Account") { showingAccount = true }
                         }
                     }
@@ -31,6 +35,7 @@ struct RootView: View {
         }
         .sheet(isPresented: $showingAccount) { AuthView(viewModel: authViewModel) }
         .sheet(isPresented: $showingHistory) { HistoryView() }
+        .sheet(isPresented: $showingPaywall) { PaywallView() }
         .sheet(isPresented: $showingPlans) {
             PlansView { plan, stage in
                 v2ViewModel.startPlanStage(plan: plan, stage: stage)

@@ -4,6 +4,7 @@ import SwiftUI
 struct GetGrilledApp: App {
     init() {
         configureNavigationBarAppearance()
+        PurchasesService.shared.configure()
     }
 
     var body: some Scene {

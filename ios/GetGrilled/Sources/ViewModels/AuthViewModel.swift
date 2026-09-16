@@ -22,6 +22,14 @@ final class AuthViewModel: ObservableObject {
             guard let self else { return }
             for await (_, session) in await self.provider.client.auth.authStateChanges {
                 self.currentUser = session?.user
+                // Anonymous session ids are stable across the anonymous->permanent upgrade
+                // (see SupabaseAuthProvider), so log in from the very first session — this is
+                // the same id /api/revenuecat/webhook writes users.subscription_status against.
+                if let userId = session?.user.id {
+                    // Supabase ids are lowercase UUIDs; Swift's UUID.uuidString is uppercase —
+                    // lowercase it so it matches the id verifyAuth() returns on the backend.
+                    PurchasesService.shared.logIn(userId: userId.uuidString.lowercased())
+                }
             }
         }
     }
