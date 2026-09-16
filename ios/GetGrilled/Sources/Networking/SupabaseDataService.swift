@@ -19,7 +19,9 @@ struct SupabaseDataService {
             .value
     }
 
-    /// The most recent session that hasn't reached a terminal state, if any.
+    /// The most recent LEGACY (v1, single-question) session that hasn't reached a terminal state.
+    /// v2 sessions (mode is set) use session_rounds instead of transcript and aren't resumable
+    /// through this path yet — resuming mid-round-flow isn't built here.
     func latestResumableSession() async throws -> SessionDetail? {
         _ = try await SupabaseAuthProvider.shared.ensureSession()
         let client = await self.client()
@@ -27,6 +29,7 @@ struct SupabaseDataService {
             .from("interview_sessions")
             .select("id, difficulty, status, transcript")
             .in("status", values: ["started", "in_progress", "awaiting_feedback"])
+            .is("mode", value: nil)
             .order("started_at", ascending: false)
             .limit(1)
             .execute()
