@@ -1,11 +1,13 @@
 import SwiftUI
 
 struct RootView: View {
-    @StateObject private var viewModel = InterviewViewModel()
+    @StateObject private var v2ViewModel = RoundSessionViewModel()
+    @StateObject private var legacyViewModel = InterviewViewModel()
     @StateObject private var authViewModel = AuthViewModel()
     @State private var showingAccount = false
     @State private var showingHistory = false
-    @State private var resumableSession: SessionDetail?
+    @State private var resumableLegacySession: SessionDetail?
+    @State private var isResumingLegacy = false
 
     private let dataService = SupabaseDataService()
 
@@ -13,7 +15,7 @@ struct RootView: View {
         NavigationStack {
             content
                 .toolbar {
-                    if viewModel.phase == .selectingDifficulty {
+                    if !isResumingLegacy && v2ViewModel.phase == .setup {
                         ToolbarItem(placement: .navigationBarLeading) {
                             Button("History") { showingHistory = true }
                         }
@@ -25,45 +27,57 @@ struct RootView: View {
         }
         .sheet(isPresented: $showingAccount) { AuthView(viewModel: authViewModel) }
         .sheet(isPresented: $showingHistory) { HistoryView() }
-        .task { await checkForResumableSession() }
+        .task { await checkForResumableLegacySession() }
         .alert("Resume interview?", isPresented: Binding(
-            get: { resumableSession != nil },
-            set: { if !$0 { resumableSession = nil } }
+            get: { resumableLegacySession != nil },
+            set: { if !$0 { resumableLegacySession = nil } }
         )) {
             Button("Resume") {
-                if let resumableSession { viewModel.resume(from: resumableSession) }
-                resumableSession = nil
+                if let resumableLegacySession {
+                    legacyViewModel.resume(from: resumableLegacySession)
+                    isResumingLegacy = true
+                }
+                resumableLegacySession = nil
             }
-            Button("Start New", role: .cancel) { resumableSession = nil }
+            Button("Start New", role: .cancel) { resumableLegacySession = nil }
         } message: {
-            Text("You have an unfinished \(resumableSession?.difficulty.displayName.lowercased() ?? "") interview.")
+            Text("You have an unfinished \(resumableLegacySession?.difficulty.displayName.lowercased() ?? "") interview from before the app's redesign.")
         }
     }
 
     @ViewBuilder
     private var content: some View {
-        switch viewModel.phase {
+        if isResumingLegacy {
+            legacyContent
+        } else {
+            RoundSessionFlowView(viewModel: v2ViewModel)
+        }
+    }
+
+    @ViewBuilder
+    private var legacyContent: some View {
+        switch legacyViewModel.phase {
         case .selectingDifficulty:
-            DifficultySelectionView(viewModel: viewModel)
+            DifficultySelectionView(viewModel: legacyViewModel)
         case .interviewing, .evaluating:
-            InterviewChatView(viewModel: viewModel)
+            InterviewChatView(viewModel: legacyViewModel)
                 .overlay {
-                    if viewModel.phase == .evaluating {
+                    if legacyViewModel.phase == .evaluating {
                         ProgressView("Evaluating…")
                             .padding()
                             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
                     }
                 }
         case .showingFeedback:
-            if let feedback = viewModel.feedback {
+            if let feedback = legacyViewModel.feedback {
                 FeedbackView(feedback: feedback)
             }
         }
     }
 
-    private func checkForResumableSession() async {
-        guard viewModel.phase == .selectingDifficulty else { return }
-        resumableSession = try? await dataService.latestResumableSession()
+    private func checkForResumableLegacySession() async {
+        guard v2ViewModel.phase == .setup, !isResumingLegacy else { return }
+        resumableLegacySession = try? await dataService.latestResumableSession()
     }
 }
 
