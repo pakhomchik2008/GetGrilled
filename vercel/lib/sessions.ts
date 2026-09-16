@@ -1,5 +1,14 @@
 import { supabaseAdmin } from "./supabaseAdmin.js";
-import type { Difficulty, InterviewSessionRow, SessionFeedback, SessionStatus, TranscriptMessage } from "./types.js";
+import { difficultyForSeniority } from "./types.js";
+import type {
+  Difficulty,
+  InterviewSessionRow,
+  Seniority,
+  SessionFeedback,
+  SessionMode,
+  SessionStatus,
+  TranscriptMessage
+} from "./types.js";
 
 export async function ensureUserRow(userId: string, email: string | null): Promise<void> {
   const { error } = await supabaseAdmin
@@ -12,6 +21,34 @@ export async function createSession(userId: string, difficulty: Difficulty): Pro
   const { data, error } = await supabaseAdmin
     .from("interview_sessions")
     .insert({ user_id: userId, difficulty, status: "started" })
+    .select("id")
+    .single();
+  if (error || !data) throw error ?? new Error("Failed to create session");
+  return data.id as string;
+}
+
+export interface CreateV2SessionInput {
+  userId: string;
+  mode: SessionMode;
+  roleTitle: string;
+  seniority: Seniority;
+  focusNotes: string | null;
+  planStageId: string | null;
+}
+
+export async function createV2Session(input: CreateV2SessionInput): Promise<string> {
+  const { data, error } = await supabaseAdmin
+    .from("interview_sessions")
+    .insert({
+      user_id: input.userId,
+      difficulty: difficultyForSeniority(input.seniority),
+      status: "started",
+      mode: input.mode,
+      role_title: input.roleTitle,
+      seniority: input.seniority,
+      focus_notes: input.focusNotes,
+      plan_stage_id: input.planStageId
+    })
     .select("id")
     .single();
   if (error || !data) throw error ?? new Error("Failed to create session");

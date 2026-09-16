@@ -1,6 +1,5 @@
 import OpenAI from "openai";
-import { FEEDBACK_TOOL } from "../anthropic.js";
-import type { LLMProvider } from "./types.js";
+import type { LLMProvider, ToolDefinition } from "./types.js";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -28,7 +27,7 @@ export const openaiProvider: LLMProvider = {
     return full;
   },
 
-  async createFeedback(system, messages) {
+  async callTool(system, messages, tool: ToolDefinition) {
     const response = await openai.chat.completions.create({
       model: MODEL,
       max_tokens: MAX_TOKENS,
@@ -37,17 +36,17 @@ export const openaiProvider: LLMProvider = {
         {
           type: "function",
           function: {
-            name: FEEDBACK_TOOL.name,
-            description: FEEDBACK_TOOL.description,
-            parameters: FEEDBACK_TOOL.input_schema
+            name: tool.name,
+            description: tool.description,
+            parameters: tool.input_schema
           }
         }
       ],
-      tool_choice: { type: "function", function: { name: "submit_feedback" } }
+      tool_choice: { type: "function", function: { name: tool.name } }
     });
     const toolCall = response.choices[0]?.message?.tool_calls?.[0];
     if (!toolCall) {
-      throw new Error("OpenAI did not return a submit_feedback tool call");
+      throw new Error(`OpenAI did not return a ${tool.name} tool call`);
     }
     return JSON.parse(toolCall.function.arguments);
   }

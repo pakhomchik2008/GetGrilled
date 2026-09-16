@@ -1,6 +1,6 @@
 import { anthropicProvider } from "./providers/anthropicProvider.js";
 import { openaiProvider } from "./providers/openaiProvider.js";
-import type { LLMMessage } from "./providers/types.js";
+import type { LLMMessage, ToolDefinition } from "./providers/types.js";
 
 // Anthropic first, OpenAI as fallback. Falling back mid-stream would mean either
 // duplicating or garbling text the client already rendered, so streamText only
@@ -31,14 +31,14 @@ export async function streamText(
   throw lastError;
 }
 
-export async function createFeedback(system: string, messages: LLMMessage[]): Promise<unknown> {
+export async function callTool(system: string, messages: LLMMessage[], tool: ToolDefinition): Promise<unknown> {
   let lastError: unknown;
   for (const provider of providers) {
     try {
-      return await provider.createFeedback(system, messages);
+      return await provider.callTool(system, messages, tool);
     } catch (error) {
       lastError = error;
-      console.error(`[llm] ${provider.name} createFeedback failed`, error);
+      console.error(`[llm] ${provider.name} callTool(${tool.name}) failed`, error);
     }
   }
   throw lastError;

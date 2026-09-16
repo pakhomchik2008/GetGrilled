@@ -1,6 +1,6 @@
 import type Anthropic from "@anthropic-ai/sdk";
-import { FEEDBACK_TOOL, MAX_TOKENS, MODEL, anthropic } from "../anthropic.js";
-import type { LLMProvider } from "./types.js";
+import { MAX_TOKENS, MODEL, anthropic } from "../anthropic.js";
+import type { LLMProvider, ToolDefinition } from "./types.js";
 
 export const anthropicProvider: LLMProvider = {
   name: "anthropic",
@@ -20,20 +20,20 @@ export const anthropicProvider: LLMProvider = {
       .join("");
   },
 
-  async createFeedback(system, messages) {
+  async callTool(system, messages, tool: ToolDefinition) {
     const response = await anthropic.messages.create({
       model: MODEL,
       max_tokens: MAX_TOKENS,
       system,
       messages: messages as Anthropic.MessageParam[],
-      tools: [FEEDBACK_TOOL],
-      tool_choice: { type: "tool", name: "submit_feedback" }
+      tools: [tool],
+      tool_choice: { type: "tool", name: tool.name }
     });
     const toolUse = response.content.find(
-      (block): block is Anthropic.ToolUseBlock => block.type === "tool_use" && block.name === "submit_feedback"
+      (block): block is Anthropic.ToolUseBlock => block.type === "tool_use" && block.name === tool.name
     );
     if (!toolUse) {
-      throw new Error("Anthropic did not return a submit_feedback tool call");
+      throw new Error(`Anthropic did not return a ${tool.name} tool call`);
     }
     return toolUse.input;
   }

@@ -3,10 +3,20 @@ export interface LLMMessage {
   content: string;
 }
 
+export interface ToolDefinition {
+  name: string;
+  description: string;
+  input_schema: {
+    type: "object";
+    required: string[];
+    properties: Record<string, unknown>;
+  };
+}
+
 export interface LLMProvider {
   name: string;
   // Streams the reply, invoking onDelta per text chunk, and returns the full text.
   streamText(system: string, messages: LLMMessage[], onDelta: (text: string) => void): Promise<string>;
-  // Returns the raw (unvalidated) submit_feedback tool/function-call arguments.
-  createFeedback(system: string, messages: LLMMessage[]): Promise<unknown>;
+  // Forces a call to `tool` and returns its raw (unvalidated) arguments.
+  callTool(system: string, messages: LLMMessage[], tool: ToolDefinition): Promise<unknown>;
 }
