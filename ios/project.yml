@@ -38,6 +38,7 @@ targets:
         CFBundleDisplayName: GetGrilled
         NSMicrophoneUsageDescription: "Used to record your spoken answers during mock interviews. Recordings are transcribed on this device and never uploaded."
         NSSpeechRecognitionUsageDescription: "Used to transcribe your spoken answers into text during mock interviews, entirely on this device."
+        NSCameraUsageDescription: "Shows your own camera feed to you during practice, like a mirror — it's never recorded or sent anywhere."
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.getgrilled.app

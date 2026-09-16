@@ -26,5 +26,7 @@
 	<string>Used to record your spoken answers during mock interviews. Recordings are transcribed on this device and never uploaded.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Used to transcribe your spoken answers into text during mock interviews, entirely on this device.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Shows your own camera feed to you during practice, like a mirror — it's never recorded or sent anywhere.</string>
 </dict>
 </plist>

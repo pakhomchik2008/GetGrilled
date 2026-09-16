@@ -2,9 +2,13 @@ import SwiftUI
 
 struct RoundView: View {
     @ObservedObject var viewModel: RoundSessionViewModel
+    @StateObject private var camera = CameraMirrorService()
+    @State private var isCameraOn = false
 
     var body: some View {
         VStack(spacing: 0) {
+            header
+
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 12) {
@@ -13,6 +17,16 @@ struct RoundView: View {
                         }
                     }
                     .padding()
+                }
+                .overlay(alignment: .topTrailing) {
+                    if isCameraOn {
+                        CameraPreviewView(session: camera.session)
+                            .frame(width: 64, height: 86)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(.white, lineWidth: 2))
+                            .shadow(radius: 4)
+                            .padding(10)
+                    }
                 }
                 .onChange(of: viewModel.messages.last?.content) { _ in
                     if let lastId = viewModel.messages.last?.id {
@@ -72,6 +86,7 @@ struct RoundView: View {
             }
         }
         .navigationTitle(viewModel.currentRound?.type.displayName ?? "Round")
+        .onDisappear { camera.stop() }
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {
@@ -88,6 +103,28 @@ struct RoundView: View {
                 }
             }
         }
+    }
+
+    private var header: some View {
+        HStack(spacing: 10) {
+            InterviewerPortraitView().frame(width: 40, height: 40)
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Alex").font(.caption.bold())
+                Text("your interviewer").font(.caption2).foregroundStyle(.secondary)
+            }
+            Spacer()
+            Button {
+                isCameraOn.toggle()
+                if isCameraOn { camera.start() } else { camera.stop() }
+            } label: {
+                Image(systemName: isCameraOn ? "video.fill" : "video.slash")
+            }
+            if let cameraError = camera.errorMessage, isCameraOn {
+                Text(cameraError).font(.caption2).foregroundStyle(.orange).lineLimit(1)
+            }
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 8)
     }
 
     private var micButton: some View {
