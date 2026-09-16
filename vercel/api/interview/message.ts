@@ -3,7 +3,7 @@ import { verifyAuth } from "../../lib/auth.js";
 import { buildSystemPrompt } from "../../lib/anthropic.js";
 import { appendTranscriptMessage, getSession } from "../../lib/sessions.js";
 import { startSSE, streamAssistantText, writeDone } from "../../lib/sse.js";
-import { toClaudeMessages, nowIso } from "../../lib/transcript.js";
+import { toLLMMessages, nowIso } from "../../lib/transcript.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   if (req.method !== "POST") {
@@ -44,7 +44,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     const replyText = await streamAssistantText(
       res,
       buildSystemPrompt(session.difficulty),
-      toClaudeMessages(transcriptSoFar)
+      toLLMMessages(transcriptSoFar)
     );
 
     await appendTranscriptMessage(sessionId, transcriptSoFar, {
