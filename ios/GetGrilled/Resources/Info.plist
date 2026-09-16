@@ -22,5 +22,9 @@
 	<string>1</string>
 	<key>UILaunchScreen</key>
 	<dict/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Used to record your spoken answers during mock interviews. Recordings are transcribed on this device and never uploaded.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Used to transcribe your spoken answers into text during mock interviews, entirely on this device.</string>
 </dict>
 </plist>
