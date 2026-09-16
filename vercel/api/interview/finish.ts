@@ -1,11 +1,12 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { verifyAuth } from "../../lib/auth.js";
-import { FEEDBACK_TOOL, MAX_TOKENS, MODEL, anthropic, buildSystemPrompt } from "../../lib/anthropic.js";
+import { buildSystemPrompt } from "../../lib/anthropic.js";
 import { parseFeedbackToolInput, FeedbackParseError } from "../../lib/feedbackSchema.js";
+import { createFeedback } from "../../lib/llmClient.js";
 import { getSession, logEvent, saveFeedback, setStatus } from "../../lib/sessions.js";
 import { assertTransition, InvalidTransitionError } from "../../lib/statusMachine.js";
-import { toClaudeMessages, nowIso } from "../../lib/transcript.js";
-import type Anthropic from "@anthropic-ai/sdk";
+import { toLLMMessages, nowIso } from "../../lib/transcript.js";
+import type { LLMMessage } from "../../lib/providers/types.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   if (req.method !== "POST") {
@@ -44,29 +45,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   }
   await setStatus(sessionId, "awaiting_feedback");
 
-  const messages: Anthropic.MessageParam[] = [
-    ...toClaudeMessages(session.transcript),
+  const messages: LLMMessage[] = [
+    ...toLLMMessages(session.transcript),
     { role: "user", content: "I'm done. Please evaluate my performance now." }
   ];
 
   try {
-    const response = await anthropic.messages.create({
-      model: MODEL,
-      max_tokens: MAX_TOKENS,
-      system: buildSystemPrompt(session.difficulty),
-      messages,
-      tools: [FEEDBACK_TOOL],
-      tool_choice: { type: "tool", name: "submit_feedback" }
-    });
-
-    const toolUse = response.content.find(
-      (block): block is Anthropic.ToolUseBlock => block.type === "tool_use" && block.name === "submit_feedback"
-    );
-    if (!toolUse) {
-      throw new Error("Model did not return a submit_feedback tool call");
-    }
-
-    const feedback = parseFeedbackToolInput(toolUse.input);
+    const rawFeedback = await createFeedback(buildSystemPrompt(session.difficulty), messages);
+    const feedback = parseFeedbackToolInput(rawFeedback);
     await saveFeedback(sessionId, feedback);
     assertTransition("awaiting_feedback", "completed");
     await setStatus(sessionId, "completed", nowIso());
