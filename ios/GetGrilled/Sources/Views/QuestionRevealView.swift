@@ -1,7 +1,6 @@
 import SwiftUI
 
 /// Full-screen "entering the call" moment before the candidate starts responding.
-/// The portrait/avatar treatment lands in a later pass — this is the functional shape.
 struct QuestionRevealView: View {
     @ObservedObject var viewModel: RoundSessionViewModel
 
@@ -22,10 +21,8 @@ struct QuestionRevealView: View {
             Spacer()
 
             VStack(spacing: 14) {
-                Circle()
-                    .fill(.thinMaterial)
-                    .frame(width: 104, height: 104)
-                    .overlay(Image(systemName: "person.fill").font(.system(size: 40)).foregroundStyle(.secondary))
+                InterviewerPortraitView()
+                    .frame(width: 148, height: 148)
                 Text("Alex · your interviewer").font(.caption.bold()).foregroundStyle(.secondary)
 
                 if let question = viewModel.messages.last {
