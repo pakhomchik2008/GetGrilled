@@ -24,7 +24,16 @@ final class InterviewViewModel: ObservableObject {
     func start(difficulty: Difficulty) {
         errorMessage = nil
         phase = .interviewing
+        codeText = language.starterCode
         Task { await runStream { try await self.api.startInterview(difficulty: difficulty) } }
+    }
+
+    /// Swaps the editor to the new language's starter stub, unless the candidate already wrote something.
+    func setLanguage(_ newLanguage: CodeLanguage) {
+        if codeText.isEmpty || codeText == language.starterCode {
+            codeText = newLanguage.starterCode
+        }
+        language = newLanguage
     }
 
     /// Restores an unfinished session (app relaunch mid-interview) from its saved transcript.
@@ -32,6 +41,7 @@ final class InterviewViewModel: ObservableObject {
         errorMessage = nil
         sessionId = detail.id.uuidString
         messages = detail.transcript.map { ChatMessage(role: $0.role, content: $0.content) }
+        codeText = language.starterCode
         phase = .interviewing
     }
 
@@ -41,7 +51,7 @@ final class InterviewViewModel: ObservableObject {
         let combined = combinedCandidateMessage()
         guard !combined.isEmpty else { return }
         messages.append(ChatMessage(role: .candidate, content: combined))
-        codeText = ""
+        codeText = language.starterCode
         explanationText = ""
         Task { await runStream { try await self.api.sendMessage(sessionId: sessionId, content: combined) } }
     }
@@ -51,7 +61,7 @@ final class InterviewViewModel: ObservableObject {
         let combined = combinedCandidateMessage()
         if !combined.isEmpty {
             messages.append(ChatMessage(role: .candidate, content: combined))
-            codeText = ""
+            codeText = language.starterCode
             explanationText = ""
         }
         Task {
@@ -76,7 +86,9 @@ final class InterviewViewModel: ObservableObject {
         if !explanationText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             parts.append(explanationText)
         }
-        if !codeText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        let trimmedCode = codeText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let isUntouchedStub = trimmedCode.isEmpty || codeText == language.starterCode
+        if !isUntouchedStub {
             parts.append("```\(language.rawValue)\n\(codeText)\n```")
         }
         return parts.joined(separator: "\n\n")

@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import Runestone
 import RunestoneJavaScriptLanguage
 import RunestonePythonLanguage
@@ -11,6 +12,12 @@ struct CodeEditorView: UIViewRepresentable {
     func makeUIView(context: Context) -> TextView {
         let textView = TextView()
         textView.editorDelegate = context.coordinator
+        // Runestone's theme colors the gutter/text/selection but never the view's own
+        // background, so without this it stays UIView's default white in dark mode.
+        textView.backgroundColor = .secondarySystemBackground
+        textView.insertionPointColor = .label
+        textView.selectionBarColor = .label
+        textView.selectionHighlightColor = UIColor.label.withAlphaComponent(0.2)
         textView.showLineNumbers = true
         textView.lineSelectionDisplayType = .line
         textView.autocorrectionType = .no

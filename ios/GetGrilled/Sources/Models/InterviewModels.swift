@@ -28,6 +28,14 @@ enum CodeLanguage: String, Codable, CaseIterable, Identifiable {
         case .javascript: return "JavaScript"
         }
     }
+
+    /// Starting point for the editor so the candidate isn't staring at a blank box.
+    var starterCode: String {
+        switch self {
+        case .python: return "def solve():\n    pass\n"
+        case .javascript: return "function solve() {\n  \n}\n"
+        }
+    }
 }
 
 /// Transcript entry as stored by the backend.
