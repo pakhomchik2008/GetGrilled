@@ -6,6 +6,7 @@ struct SessionSummaryView: View {
     let mode: SessionMode
     let rounds: [SessionRoundSummary]
     let overallSummary: String
+    var onBackToDashboard: () -> Void = {}
 
     var body: some View {
         ScrollView {
@@ -26,6 +27,13 @@ struct SessionSummaryView: View {
                 }
                 .padding()
                 .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
+
+                Button {
+                    onBackToDashboard()
+                } label: {
+                    Text("Back to dashboard").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
             }
             .padding()
         }

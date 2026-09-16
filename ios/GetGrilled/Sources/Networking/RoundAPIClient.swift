@@ -96,16 +96,32 @@ struct RoundAPIClient {
         return streamEvents(for: request)
     }
 
-    func sendRoundMessage(sessionId: String, roundId: String, content: String, action: ChipAction? = nil) async throws -> AsyncThrowingStream<ChatStreamEvent, Error> {
+    func sendRoundMessage(
+        sessionId: String,
+        roundId: String,
+        content: String,
+        action: ChipAction? = nil,
+        imageBase64: String? = nil,
+        imageMediaType: String? = nil
+    ) async throws -> AsyncThrowingStream<ChatStreamEvent, Error> {
         struct Body: Encodable {
             let sessionId: String
             let roundId: String
             let content: String?
             let action: String?
+            let imageBase64: String?
+            let imageMediaType: String?
         }
         let request = try await authorizedRequest(
             path: "api/round/message",
-            body: Body(sessionId: sessionId, roundId: roundId, content: action == nil ? content : nil, action: action?.rawValue)
+            body: Body(
+                sessionId: sessionId,
+                roundId: roundId,
+                content: action == nil ? content : nil,
+                action: action?.rawValue,
+                imageBase64: action == nil ? imageBase64 : nil,
+                imageMediaType: action == nil ? imageMediaType : nil
+            )
         )
         return streamEvents(for: request)
     }

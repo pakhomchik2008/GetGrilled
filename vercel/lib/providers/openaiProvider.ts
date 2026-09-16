@@ -1,10 +1,35 @@
 import OpenAI from "openai";
-import type { LLMProvider, ToolDefinition } from "./types.js";
+import type { LLMMessage, LLMProvider, ToolDefinition } from "./types.js";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const MODEL = "gpt-4o";
 const MAX_TOKENS = 2048;
+
+// OpenAI only allows image_url parts on user messages (assistant content is text-only), so
+// this branches per role rather than mapping generically — our transcript never attaches an
+// image to an interviewer/assistant turn anyway.
+function toOpenAIMessages(messages: LLMMessage[]): OpenAI.ChatCompletionMessageParam[] {
+  return messages.map((message): OpenAI.ChatCompletionMessageParam => {
+    if (message.role === "assistant") {
+      return {
+        role: "assistant",
+        content: typeof message.content === "string" ? message.content : message.content.map((part) => (part.type === "text" ? part.text : "")).join("")
+      };
+    }
+    return {
+      role: "user",
+      content:
+        typeof message.content === "string"
+          ? message.content
+          : message.content.map((part) =>
+              part.type === "text"
+                ? { type: "text" as const, text: part.text }
+                : { type: "image_url" as const, image_url: { url: `data:${part.mediaType};base64,${part.base64}` } }
+            )
+    };
+  });
+}
 
 export const openaiProvider: LLMProvider = {
   name: "openai",
@@ -14,7 +39,7 @@ export const openaiProvider: LLMProvider = {
       model: MODEL,
       max_tokens: MAX_TOKENS,
       stream: true,
-      messages: [{ role: "system", content: system }, ...messages]
+      messages: [{ role: "system", content: system }, ...toOpenAIMessages(messages)]
     });
     let full = "";
     for await (const chunk of stream) {
@@ -31,7 +56,7 @@ export const openaiProvider: LLMProvider = {
     const response = await openai.chat.completions.create({
       model: MODEL,
       max_tokens: MAX_TOKENS,
-      messages: [{ role: "system", content: system }, ...messages],
+      messages: [{ role: "system", content: system }, ...toOpenAIMessages(messages)],
       tools: [
         {
           type: "function",

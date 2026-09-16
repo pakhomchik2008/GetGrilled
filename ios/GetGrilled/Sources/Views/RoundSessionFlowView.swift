@@ -33,7 +33,8 @@ struct RoundSessionFlowView: View {
                 seniority: viewModel.seniority,
                 mode: viewModel.mode,
                 rounds: viewModel.roundSummaries,
-                overallSummary: viewModel.overallSummary ?? ""
+                overallSummary: viewModel.overallSummary ?? "",
+                onBackToDashboard: { viewModel.resetToSetup() }
             )
         }
     }

@@ -1,6 +1,10 @@
+export type LLMContentPart =
+  | { type: "text"; text: string }
+  | { type: "image"; mediaType: "image/jpeg" | "image/png"; base64: string };
+
 export interface LLMMessage {
   role: "user" | "assistant";
-  content: string;
+  content: string | LLMContentPart[];
 }
 
 export interface ToolDefinition {

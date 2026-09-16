@@ -5,8 +5,12 @@ import { appendRoundTranscript, getRound } from "../../lib/rounds.js";
 import { getSession } from "../../lib/sessions.js";
 import { startSSE, streamAssistantText, writeDone } from "../../lib/sse.js";
 import { toLLMMessages, nowIso } from "../../lib/transcript.js";
+import { isImageMediaType, type TranscriptMessage } from "../../lib/types.js";
 
 const VALID_ACTIONS = new Set(["hint", "repeat"]);
+// Base64 length, not raw bytes — comfortably covers a resized screenshot without letting
+// someone stuff an oversized payload into the sessions JSONB column.
+const MAX_IMAGE_BASE64_LENGTH = 4_000_000;
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   if (req.method !== "POST") {
@@ -22,7 +26,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     return;
   }
 
-  const { sessionId, roundId, content, action } = req.body ?? {};
+  const { sessionId, roundId, content, action, imageBase64, imageMediaType } = req.body ?? {};
   if (typeof sessionId !== "string" || typeof roundId !== "string") {
     res.status(400).json({ error: "sessionId and roundId are required" });
     return;
@@ -31,9 +35,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     res.status(400).json({ error: "action must be one of hint, repeat" });
     return;
   }
-  const candidateText = action ? actionMessageContent(action) : content;
-  if (typeof candidateText !== "string" || candidateText.trim().length === 0) {
-    res.status(400).json({ error: "content or a valid action is required" });
+  const hasImage = imageBase64 !== undefined;
+  if (hasImage) {
+    if (typeof imageBase64 !== "string" || imageBase64.length === 0 || imageBase64.length > MAX_IMAGE_BASE64_LENGTH) {
+      res.status(400).json({ error: "imageBase64 must be a non-empty base64 string within the size limit" });
+      return;
+    }
+    if (!isImageMediaType(imageMediaType)) {
+      res.status(400).json({ error: "imageMediaType must be image/jpeg or image/png" });
+      return;
+    }
+  }
+  const candidateText = action ? actionMessageContent(action) : typeof content === "string" ? content : "";
+  if (!action && candidateText.trim().length === 0 && !hasImage) {
+    res.status(400).json({ error: "content, an image, or a valid action is required" });
     return;
   }
 
@@ -56,7 +71,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     return;
   }
 
-  const candidateMessage = { role: "candidate" as const, content: candidateText, timestamp: nowIso() };
+  const candidateMessage: TranscriptMessage = {
+    role: "candidate",
+    content: candidateText,
+    timestamp: nowIso(),
+    ...(hasImage ? { image: { mediaType: imageMediaType, base64: imageBase64 } } : {})
+  };
   await appendRoundTranscript(roundId, round.transcript, candidateMessage);
   const transcriptSoFar = [...round.transcript, candidateMessage];
 

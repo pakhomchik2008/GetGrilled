@@ -4,7 +4,7 @@ import AVFoundation
 @MainActor
 final class Narrator: NSObject, ObservableObject {
     @Published private(set) var isSpeaking = false
-    @Published var isMuted = false {
+    @Published var isMuted = true {
         didSet { if isMuted { stop() } }
     }
 
