@@ -5,62 +5,66 @@ struct SetupView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 20) {
+            VStack(spacing: 22) {
+                HStack(spacing: 7) {
+                    Text("🔥").font(.system(size: 16))
+                    Text("GetGrilled").font(.onest(14, .bold)).foregroundStyle(DesignTokens.ink)
+                }
+
                 VStack(spacing: 6) {
                     Text("Before we start")
-                        .font(.title2.bold())
+                        .font(.onest(25, .extrabold))
+                        .foregroundStyle(DesignTokens.ink)
                     Text("Tell the interviewer who you're prepping to be.")
-                        .foregroundStyle(.secondary)
+                        .font(.onest(13.5))
+                        .foregroundStyle(DesignTokens.inkSoft)
                         .multilineTextAlignment(.center)
                 }
 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Mode").font(.caption.bold()).foregroundStyle(.secondary)
-                    Picker("Mode", selection: $viewModel.mode) {
-                        ForEach(SessionMode.allCases) { Text($0.displayName).tag($0) }
-                    }
-                    .pickerStyle(.segmented)
+                    FieldLabel("Mode")
+                    SegmentedControl(options: SessionMode.allCases, label: \.displayName, selection: $viewModel.mode)
                 }
 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Role").font(.caption.bold()).foregroundStyle(.secondary)
+                    FieldLabel("Role")
                     TextField("e.g. Backend Engineer", text: $viewModel.roleTitle)
-                        .textFieldStyle(.roundedBorder)
+                        .textFieldStyle(.plain)
+                        .fakeFieldStyle()
                 }
 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Level").font(.caption.bold()).foregroundStyle(.secondary)
-                    Picker("Level", selection: $viewModel.seniority) {
-                        ForEach(Seniority.allCases) { Text($0.displayName).tag($0) }
-                    }
-                    .pickerStyle(.segmented)
+                    FieldLabel("Level")
+                    SegmentedControl(options: Seniority.allCases, label: \.displayName, selection: $viewModel.seniority)
                 }
 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Focus on (optional)").font(.caption.bold()).foregroundStyle(.secondary)
+                    FieldLabel("Focus on (optional)")
                     TextField("Anything you want to work on…", text: $viewModel.focusNotes, axis: .vertical)
-                        .textFieldStyle(.roundedBorder)
+                        .textFieldStyle(.plain)
                         .lineLimit(2...4)
+                        .fakeFieldStyle()
                 }
 
                 Button {
                     viewModel.startManualSession()
                 } label: {
-                    Text("Start interview").frame(maxWidth: .infinity)
+                    Text("Start interview")
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.ggPrimary)
                 .disabled(viewModel.roleTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
 
                 Text("3 rounds · Intro → Technical → Behavioral")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.onest(12))
+                    .foregroundStyle(DesignTokens.inkFaint)
 
                 if let errorMessage = viewModel.errorMessage {
-                    Text(errorMessage).font(.footnote).foregroundStyle(.red)
+                    Text(errorMessage).font(.onest(12)).foregroundStyle(DesignTokens.danger)
                 }
             }
-            .padding()
+            .padding(20)
         }
+        .background(DesignTokens.bg.ignoresSafeArea())
     }
 }
 
