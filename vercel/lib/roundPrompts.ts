@@ -122,6 +122,32 @@ export const ROUND_FEEDBACK_TOOL = {
   }
 };
 
+// A cheap, separate classification call after each interviewer reply — lets the app
+// auto-advance to scoring/next round without the candidate needing to tap "I'm done"
+// themselves, while keeping round/message's actual reply free of any tool-calling
+// constraints (see NO_SELF_FINISH above for why that reply can't end the round itself).
+export const ROUND_READY_TOOL = {
+  name: "assess_round_readiness",
+  description: "Report whether this interview round has reached a natural stopping point and is ready to be scored.",
+  input_schema: {
+    type: "object" as const,
+    required: ["ready"],
+    properties: {
+      ready: { type: "boolean" }
+    }
+  }
+};
+
+export function buildRoundReadinessSystem(): string {
+  return `You are grading whether a single mock-interview round (shown below as a transcript) has reached a natural stopping point — metadata only, not part of the interview itself.
+
+Call assess_round_readiness with ready=true only if the interviewer has asked what this round calls for AND the candidate has substantively answered, and either the interviewer's last message reads like a natural wrap-up/acknowledgment (not a new question) OR the candidate has clearly said they're done / want to move on.
+
+Call it with ready=false if the interviewer just asked something and is waiting on an answer, the round only just started, or the candidate's last message was a brief meta action (asking for a hint, asking to repeat the question) rather than a real answer.
+
+When in doubt, prefer false — cutting a round short is worse than asking the candidate to tap through manually.`;
+}
+
 export const SESSION_SUMMARY_TOOL = {
   name: "submit_session_summary",
   description: "One overall paragraph summarizing the candidate's performance across all rounds",

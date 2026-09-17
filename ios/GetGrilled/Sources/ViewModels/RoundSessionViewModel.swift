@@ -255,9 +255,25 @@ final class RoundSessionViewModel: ObservableObject {
         explanationText = ""
         pendingImage = nil
         Task {
-            await runStream {
+            let roundReady = await runStream {
                 try await self.api.sendRoundMessage(sessionId: sessionId, roundId: roundId, content: combined, imageBase64: image?.base64, imageMediaType: image?.mediaType)
             }
+            if roundReady {
+                await self.advanceRoundIfReady()
+            }
+        }
+    }
+
+    /// Auto-advance once the backend's readiness check says this round is done — the same
+    /// transition "I'm done" performs, just without the candidate needing to tap it themselves.
+    /// Guarded on `phase == .round` so a stray late readiness signal can't fire after the
+    /// candidate has already moved on some other way.
+    private func advanceRoundIfReady() async {
+        guard phase == .round else { return }
+        if mode == .test {
+            phase = .selfEval
+        } else {
+            await finishRound(selfEval: nil)
         }
     }
 
@@ -378,9 +394,14 @@ final class RoundSessionViewModel: ObservableObject {
         return parts.joined(separator: "\n\n")
     }
 
-    private func runStream(_ makeStream: () async throws -> AsyncThrowingStream<ChatStreamEvent, Error>) async {
+    /// Returns whether the backend's own readiness check says this round can be auto-advanced —
+    /// always false for streams other than a normal round/message reply (round/start, chip
+    /// actions) since the server only ever sets it there.
+    @discardableResult
+    private func runStream(_ makeStream: () async throws -> AsyncThrowingStream<ChatStreamEvent, Error>) async -> Bool {
         isStreaming = true
         defer { isStreaming = false }
+        var roundReady = false
         do {
             let stream = try await makeStream()
             let placeholderId = UUID()
@@ -389,8 +410,8 @@ final class RoundSessionViewModel: ObservableObject {
                 switch event {
                 case .delta(let text):
                     appendDelta(text, toMessageWithId: placeholderId)
-                case .done:
-                    break
+                case .done(_, let ready):
+                    roundReady = ready
                 }
             }
             if let final = messages.first(where: { $0.id == placeholderId }) {
@@ -403,6 +424,7 @@ final class RoundSessionViewModel: ObservableObject {
                 errorMessage = "Connection issue: \(error.localizedDescription)"
             }
         }
+        return roundReady
     }
 
     private func appendDelta(_ text: String, toMessageWithId id: UUID) {
