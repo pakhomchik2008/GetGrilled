@@ -26,10 +26,13 @@ enum APIError: LocalizedError {
 /// Stream events emitted by the interviewer chat endpoints, one per SSE `data:` line.
 enum ChatStreamEvent: Decodable {
     case delta(text: String)
-    case done(sessionId: String)
+    /// `roundReady` is only ever true from `round/message` — the backend's own best-effort
+    /// read on whether this round has reached a natural stopping point, so the app can
+    /// advance without the candidate needing to tap "I'm done" themselves.
+    case done(sessionId: String, roundReady: Bool)
 
     private enum CodingKeys: String, CodingKey {
-        case type, text, sessionId
+        case type, text, sessionId, roundReady
     }
 
     init(from decoder: Decoder) throws {
@@ -39,7 +42,8 @@ enum ChatStreamEvent: Decodable {
         case "delta":
             self = .delta(text: try container.decode(String.self, forKey: .text))
         case "done":
-            self = .done(sessionId: try container.decode(String.self, forKey: .sessionId))
+            let roundReady = try container.decodeIfPresent(Bool.self, forKey: .roundReady) ?? false
+            self = .done(sessionId: try container.decode(String.self, forKey: .sessionId), roundReady: roundReady)
         default:
             throw APIError.decoding
         }

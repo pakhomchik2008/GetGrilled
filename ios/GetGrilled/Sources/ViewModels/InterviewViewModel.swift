@@ -105,7 +105,7 @@ final class InterviewViewModel: ObservableObject {
                 switch event {
                 case .delta(let text):
                     appendDelta(text, toMessageWithId: placeholderId)
-                case .done(let sessionId):
+                case .done(let sessionId, _):
                     self.sessionId = sessionId
                 }
             }

@@ -1,7 +1,8 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { verifyAuth } from "../../lib/auth.js";
-import { actionMessageContent, buildRoundPrompt } from "../../lib/roundPrompts.js";
+import { actionMessageContent, buildRoundPrompt, buildRoundReadinessSystem, ROUND_READY_TOOL } from "../../lib/roundPrompts.js";
 import { appendRoundTranscript, getRound } from "../../lib/rounds.js";
+import { callTool } from "../../lib/llmClient.js";
 import { getSession } from "../../lib/sessions.js";
 import { startSSE, streamAssistantText, writeDone } from "../../lib/sse.js";
 import { toLLMMessages, nowIso } from "../../lib/transcript.js";
@@ -90,15 +91,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   startSSE(res);
   try {
     const replyText = await streamAssistantText(res, system, toLLMMessages(transcriptSoFar));
+    const transcriptWithReply = [...transcriptSoFar, { role: "interviewer" as const, content: replyText, timestamp: nowIso() }];
     await appendRoundTranscript(roundId, transcriptSoFar, {
       role: "interviewer",
       content: replyText,
       timestamp: nowIso()
     });
-    writeDone(res, sessionId, { roundId });
+    const roundReady = await assessRoundReady(transcriptWithReply);
+    writeDone(res, sessionId, { roundId, roundReady });
   } catch (error) {
     res.write(`data: ${JSON.stringify({ type: "error", message: "Interviewer is unavailable right now." })}\n\n`);
     res.end();
     console.error("round/message failed", error);
+  }
+}
+
+// Best-effort — a failure here just means the candidate falls back to tapping "I'm done"
+// themselves, so it never blocks or fails the actual interviewer reply above.
+async function assessRoundReady(transcript: TranscriptMessage[]): Promise<boolean> {
+  try {
+    const raw = await callTool(buildRoundReadinessSystem(), toLLMMessages(transcript), ROUND_READY_TOOL);
+    return typeof raw === "object" && raw !== null && (raw as { ready?: unknown }).ready === true;
+  } catch (error) {
+    console.error("round/message: readiness check failed", error);
+    return false;
   }
 }
