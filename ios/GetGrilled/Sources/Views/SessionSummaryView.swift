@@ -24,7 +24,8 @@ struct SessionSummaryView: View {
 
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Overall").font(.onest(13, .bold)).foregroundStyle(DesignTokens.ink)
-                    Text(overallSummary).font(.onest(12.5)).foregroundStyle(DesignTokens.ink).lineSpacing(3)
+                    MarkdownText(content: overallSummary, size: 12.5, color: DesignTokens.ink)
+                        .lineSpacing(3)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(14)
@@ -62,7 +63,8 @@ struct SessionSummaryView: View {
                     }
                 }
                 if let notes = round.feedbackNotes {
-                    Text(notes).font(.onest(12.5)).foregroundStyle(DesignTokens.inkSoft).lineSpacing(2)
+                    MarkdownText(content: notes, size: 12.5, color: DesignTokens.inkSoft)
+                        .lineSpacing(2)
                 }
             }
         }

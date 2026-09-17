@@ -138,7 +138,7 @@ final class RoundSessionViewModel: ObservableObject {
                 let html = String(data: data, encoding: .utf8) ?? String(data: data, encoding: .isoLatin1) ?? ""
                 let text = Self.stripHTML(html)
                 guard !text.isEmpty else {
-                    jobContextError = "Couldn't find readable text there — some sites (like LinkedIn) block this. Try the PDF instead."
+                    jobContextError = "Couldn't find readable text there — some sites (like LinkedIn) block this. Try the PDF, or paste the text instead."
                     return
                 }
                 jobContext = String(text.prefix(Self.maxJobContextLength))
@@ -147,6 +147,16 @@ final class RoundSessionViewModel: ObservableObject {
                 jobContextError = "Couldn't load that link: \(error.localizedDescription)"
             }
         }
+    }
+
+    /// Fallback for sites (LinkedIn, etc.) that block plain fetches — candidate copy-pastes the
+    /// posting text themselves instead of us trying to scrape it.
+    func attachJobText(_ text: String) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        jobContextError = nil
+        jobContext = String(trimmed.prefix(Self.maxJobContextLength))
+        jobContextSourceLabel = "Pasted description"
     }
 
     func clearJobContext() {
