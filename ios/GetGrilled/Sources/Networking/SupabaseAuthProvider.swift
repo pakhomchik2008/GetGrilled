@@ -17,11 +17,13 @@ actor SupabaseAuthProvider {
         try await ensureSession().accessToken
     }
 
+    /// `client.auth.session` already returns the cached session as-is when still valid and
+    /// transparently refreshes it via the stored refresh token when expired — unlike
+    /// `client.auth.currentSession`, which is a synchronous read of whatever's cached, expired
+    /// or not (its own doc comment says as much). Only falls through to a fresh anonymous
+    /// sign-in when there's truly no session to refresh (`.sessionMissing`, e.g. first launch).
     @discardableResult
     func ensureSession() async throws -> Session {
-        if let session = client.auth.currentSession {
-            return session
-        }
         do {
             return try await client.auth.session
         } catch {
