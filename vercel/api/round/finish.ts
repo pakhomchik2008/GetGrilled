@@ -75,7 +75,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   const system = buildRoundPrompt(round.round_type, {
     roleTitle: session.role_title,
     seniority: session.seniority,
-    focusNotes: session.focus_notes
+    focusNotes: session.focus_notes,
+    jobContext: session.job_context
   });
   const messages = [
     ...toLLMMessages(round.transcript),

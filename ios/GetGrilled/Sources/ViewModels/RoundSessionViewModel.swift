@@ -1,4 +1,5 @@
 import Foundation
+import PDFKit
 import UIKit
 
 @MainActor
@@ -17,6 +18,13 @@ final class RoundSessionViewModel: ObservableObject {
     @Published var roleTitle: String = ""
     @Published var seniority: Seniority = .mid
     @Published var focusNotes: String = ""
+    /// Text pulled from an attached job-posting PDF or link — extra context so the interviewer
+    /// tailors questions to the actual role, not just a title/level pair.
+    @Published private(set) var jobContext: String = ""
+    @Published private(set) var jobContextSourceLabel: String?
+    @Published private(set) var isExtractingJobContext = false
+    @Published var jobContextError: String?
+    private static let maxJobContextLength = 6000
 
     @Published private(set) var phase: Phase = .setup
     @Published private(set) var messages: [ChatMessage] = []
@@ -82,6 +90,85 @@ final class RoundSessionViewModel: ObservableObject {
         roundSummaries = []
         errorMessage = nil
         limitReached = false
+        clearJobContext()
+    }
+
+    // MARK: Job posting context
+
+    func attachJobPDF(data: Data, filename: String) {
+        isExtractingJobContext = true
+        jobContextError = nil
+        Task {
+            defer { isExtractingJobContext = false }
+            guard let document = PDFDocument(data: data) else {
+                jobContextError = "Couldn't read that PDF."
+                return
+            }
+            let text = (document.string ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !text.isEmpty else {
+                jobContextError = "That PDF doesn't have extractable text."
+                return
+            }
+            jobContext = String(text.prefix(Self.maxJobContextLength))
+            jobContextSourceLabel = filename
+        }
+    }
+
+    func attachJobLink(_ rawURL: String) {
+        let trimmed = rawURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let url = URL(string: trimmed), let scheme = url.scheme, scheme.hasPrefix("http") else {
+            jobContextError = "That doesn't look like a valid link."
+            return
+        }
+        isExtractingJobContext = true
+        jobContextError = nil
+        Task {
+            defer { isExtractingJobContext = false }
+            do {
+                var request = URLRequest(url: url)
+                request.setValue(
+                    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+                    forHTTPHeaderField: "User-Agent"
+                )
+                let (data, response) = try await URLSession.shared.data(for: request)
+                guard let http = response as? HTTPURLResponse, 200..<300 ~= http.statusCode else {
+                    jobContextError = "Couldn't load that page."
+                    return
+                }
+                let html = String(data: data, encoding: .utf8) ?? String(data: data, encoding: .isoLatin1) ?? ""
+                let text = Self.stripHTML(html)
+                guard !text.isEmpty else {
+                    jobContextError = "Couldn't find readable text there — some sites (like LinkedIn) block this. Try the PDF instead."
+                    return
+                }
+                jobContext = String(text.prefix(Self.maxJobContextLength))
+                jobContextSourceLabel = url.host ?? trimmed
+            } catch {
+                jobContextError = "Couldn't load that link: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    func clearJobContext() {
+        jobContext = ""
+        jobContextSourceLabel = nil
+        jobContextError = nil
+    }
+
+    /// Deliberately simple — strip tags/scripts/styles and collapse whitespace, no HTML parser
+    /// dependency. Good enough for a plain job-posting page; not every site will yield much.
+    private static func stripHTML(_ html: String) -> String {
+        var text = html
+        for tag in ["script", "style", "noscript", "header", "nav", "footer"] {
+            text = text.replacingOccurrences(of: "<\(tag)[^>]*>[\\s\\S]*?</\(tag)>", with: " ", options: [.regularExpression, .caseInsensitive])
+        }
+        text = text.replacingOccurrences(of: "<[^>]+>", with: " ", options: .regularExpression)
+        let entities = ["&nbsp;": " ", "&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": "\"", "&#39;": "'"]
+        for (entity, replacement) in entities {
+            text = text.replacingOccurrences(of: entity, with: replacement)
+        }
+        text = text.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+        return text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private func startSession() {
@@ -94,7 +181,8 @@ final class RoundSessionViewModel: ObservableObject {
                     roleTitle: roleTitle.trimmingCharacters(in: .whitespacesAndNewlines),
                     seniority: seniority,
                     focusNotes: focusNotes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : focusNotes,
-                    planStageId: planStageId
+                    planStageId: planStageId,
+                    jobContext: jobContext.isEmpty ? nil : jobContext
                 )
                 sessionId = response.sessionId
                 currentRound = response.round

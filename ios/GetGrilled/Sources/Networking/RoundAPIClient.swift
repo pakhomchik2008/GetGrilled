@@ -59,6 +59,7 @@ struct RoundAPIClient {
         let seniority: Seniority
         let focusNotes: String?
         let planStageId: String?
+        let jobContext: String?
     }
 
     func createSession(
@@ -66,11 +67,12 @@ struct RoundAPIClient {
         roleTitle: String,
         seniority: Seniority,
         focusNotes: String?,
-        planStageId: String? = nil
+        planStageId: String? = nil,
+        jobContext: String? = nil
     ) async throws -> CreateSessionResponse {
         let request = try await authorizedRequest(
             path: "api/session/create",
-            body: CreateSessionBody(mode: mode, roleTitle: roleTitle, seniority: seniority, focusNotes: focusNotes, planStageId: planStageId)
+            body: CreateSessionBody(mode: mode, roleTitle: roleTitle, seniority: seniority, focusNotes: focusNotes, planStageId: planStageId, jobContext: jobContext)
         )
         return try await decodedResponse(for: request, as: CreateSessionResponse.self)
     }

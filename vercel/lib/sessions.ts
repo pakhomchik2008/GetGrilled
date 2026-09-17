@@ -34,6 +34,7 @@ export interface CreateV2SessionInput {
   seniority: Seniority;
   focusNotes: string | null;
   planStageId: string | null;
+  jobContext: string | null;
 }
 
 export async function createV2Session(input: CreateV2SessionInput): Promise<string> {
@@ -47,7 +48,8 @@ export async function createV2Session(input: CreateV2SessionInput): Promise<stri
       role_title: input.roleTitle,
       seniority: input.seniority,
       focus_notes: input.focusNotes,
-      plan_stage_id: input.planStageId
+      plan_stage_id: input.planStageId,
+      job_context: input.jobContext
     })
     .select("id")
     .single();

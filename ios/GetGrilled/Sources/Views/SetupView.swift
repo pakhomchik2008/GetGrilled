@@ -1,7 +1,10 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct SetupView: View {
     @ObservedObject var viewModel: RoundSessionViewModel
+    @State private var jobLinkText = ""
+    @State private var showingPDFPicker = false
 
     var body: some View {
         ScrollView {
@@ -46,6 +49,8 @@ struct SetupView: View {
                         .fakeFieldStyle()
                 }
 
+                jobPostingSection
+
                 Button {
                     viewModel.startManualSession()
                 } label: {
@@ -65,6 +70,82 @@ struct SetupView: View {
             .padding(20)
         }
         .background(DesignTokens.bg.ignoresSafeArea())
+        .fileImporter(isPresented: $showingPDFPicker, allowedContentTypes: [.pdf]) { result in
+            switch result {
+            case .success(let url):
+                loadPDF(from: url)
+            case .failure(let error):
+                viewModel.jobContextError = "Couldn't open that file: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    private func loadPDF(from url: URL) {
+        let gotAccess = url.startAccessingSecurityScopedResource()
+        defer { if gotAccess { url.stopAccessingSecurityScopedResource() } }
+        do {
+            let data = try Data(contentsOf: url)
+            viewModel.attachJobPDF(data: data, filename: url.lastPathComponent)
+        } catch {
+            viewModel.jobContextError = "Couldn't read that file: \(error.localizedDescription)"
+        }
+    }
+
+    private var jobPostingSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            FieldLabel("Job posting (optional)")
+            Text("Paste the role's job link, or attach the PDF — helps tailor questions to the actual role.")
+                .font(.onest(11.5))
+                .foregroundStyle(DesignTokens.inkFaint)
+
+            if let label = viewModel.jobContextSourceLabel {
+                HStack(spacing: 8) {
+                    Image(systemName: "doc.text.fill").foregroundStyle(DesignTokens.success)
+                    Text(label).font(.onest(13)).foregroundStyle(DesignTokens.ink).lineLimit(1)
+                    Spacer()
+                    Button { viewModel.clearJobContext() } label: {
+                        Image(systemName: "xmark.circle.fill").foregroundStyle(DesignTokens.inkFaint)
+                    }
+                }
+                .fakeFieldStyle()
+            } else {
+                HStack(spacing: 8) {
+                    TextField("Paste job link…", text: $jobLinkText)
+                        .textFieldStyle(.plain)
+                        .font(.onest(13))
+                        .fakeFieldStyle()
+                        .keyboardType(.URL)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .submitLabel(.go)
+                        .onSubmit {
+                            viewModel.attachJobLink(jobLinkText)
+                        }
+
+                    Button {
+                        showingPDFPicker = true
+                    } label: {
+                        Image(systemName: "doc.badge.plus")
+                            .font(.system(size: 16))
+                            .foregroundStyle(DesignTokens.inkSoft)
+                            .frame(width: 44, height: 44)
+                            .background(DesignTokens.surface, in: RoundedRectangle(cornerRadius: 11))
+                            .overlay(RoundedRectangle(cornerRadius: 11).stroke(DesignTokens.line, lineWidth: 1))
+                    }
+                }
+
+                if viewModel.isExtractingJobContext {
+                    HStack(spacing: 6) {
+                        ProgressView()
+                        Text("Reading…").font(.onest(11)).foregroundStyle(DesignTokens.inkFaint)
+                    }
+                }
+            }
+
+            if let jobContextError = viewModel.jobContextError {
+                Text(jobContextError).font(.onest(11)).foregroundStyle(DesignTokens.danger)
+            }
+        }
     }
 }
 

@@ -56,6 +56,8 @@ export interface InterviewSessionRow {
   seniority: Seniority | null;
   focus_notes: string | null;
   plan_stage_id: string | null;
+  /** Text pulled from an attached job-posting PDF or link — tone/domain context only. */
+  job_context: string | null;
 }
 
 export interface SessionRoundRow {
