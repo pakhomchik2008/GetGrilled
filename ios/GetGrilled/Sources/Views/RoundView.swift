@@ -12,6 +12,7 @@ struct RoundView: View {
     @State private var photoItem: PhotosPickerItem?
     @State private var isMicPressed = false
     @State private var micPulse = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(viewModel: RoundSessionViewModel) {
         self.viewModel = viewModel
@@ -78,19 +79,19 @@ struct RoundView: View {
 
                     if viewModel.currentRound?.type.usesCodeEditor == true {
                         codeEditorBlock
-                            .transition(MotionTokens.materialize)
+                            .transition(MotionTokens.materialize(reduceMotion: reduceMotion))
                     }
 
                     if let pendingImage = viewModel.pendingImage {
                         attachedImagePreview(pendingImage)
-                            .transition(MotionTokens.materialize)
+                            .transition(MotionTokens.materialize(reduceMotion: reduceMotion))
                     }
                 }
                 .padding(.horizontal)
                 .padding(.top, 8)
-                .animation(MotionTokens.standard, value: viewModel.messages.map(\.id))
-                .animation(MotionTokens.standard, value: viewModel.currentRound?.type.usesCodeEditor)
-                .animation(MotionTokens.standard, value: viewModel.pendingImage != nil)
+                .animation(MotionTokens.standard(reduceMotion: reduceMotion), value: viewModel.messages.map(\.id))
+                .animation(MotionTokens.standard(reduceMotion: reduceMotion), value: viewModel.currentRound?.type.usesCodeEditor)
+                .animation(MotionTokens.standard(reduceMotion: reduceMotion), value: viewModel.pendingImage != nil)
             }
 
             Divider()
@@ -117,8 +118,8 @@ struct RoundView: View {
                     .transition(.opacity)
             }
         }
-        .animation(MotionTokens.standard, value: viewModel.errorMessage)
-        .animation(MotionTokens.standard, value: viewModel.voiceInputErrorMessage)
+        .animation(MotionTokens.standard(reduceMotion: reduceMotion), value: viewModel.errorMessage)
+        .animation(MotionTokens.standard(reduceMotion: reduceMotion), value: viewModel.voiceInputErrorMessage)
         .background(DesignTokens.bg.ignoresSafeArea())
         .navigationTitle(viewModel.currentRound?.type.displayName ?? "Round")
         .onDisappear { camera.stop() }
@@ -164,16 +165,16 @@ struct RoundView: View {
                         // New question materializes as its own bubble arriving, not a hard
                         // content swap inside the old one.
                         .id(message.id)
-                        .transition(MotionTokens.materialize)
+                        .transition(MotionTokens.materialize(reduceMotion: reduceMotion))
                 }
             }
             .padding(.top, 22)
             .padding(.horizontal, 16)
             .padding(.bottom, 18)
-            .animation(MotionTokens.standard, value: lastInterviewerMessage?.id)
+            .animation(MotionTokens.standard(reduceMotion: reduceMotion), value: lastInterviewerMessage?.id)
 
             cameraCorner.padding(10)
-                .animation(MotionTokens.standard, value: isCameraOn)
+                .animation(MotionTokens.standard(reduceMotion: reduceMotion), value: isCameraOn)
         }
     }
 
@@ -191,7 +192,7 @@ struct RoundView: View {
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .overlay(RoundedRectangle(cornerRadius: 12).stroke(DesignTokens.surface, lineWidth: 2))
             .shadow(color: .black.opacity(0.2), radius: 4)
-            .transition(MotionTokens.materialize)
+            .transition(MotionTokens.materialize(reduceMotion: reduceMotion))
             .onTapGesture { isCameraOn = false; camera.stop() }
         } else {
             Button {
@@ -206,7 +207,7 @@ struct RoundView: View {
                     .overlay(Circle().stroke(DesignTokens.line, lineWidth: 1))
             }
             .buttonStyle(IconPressStyle())
-            .transition(MotionTokens.materialize)
+            .transition(MotionTokens.materialize(reduceMotion: reduceMotion))
             if let cameraError = camera.errorMessage {
                 Text(cameraError).font(.system(size: 8)).foregroundStyle(.orange).frame(width: 60)
             }
@@ -349,7 +350,7 @@ struct RoundView: View {
             .background(speechRecognizer.isRecording ? DesignTokens.danger : DesignTokens.accent, in: Circle())
             .scaleEffect((isMicPressed ? 0.9 : 1) * (micPulse ? 1.1 : 1))
             .onLongPressGesture(minimumDuration: 0, maximumDistance: .infinity, pressing: { pressing in
-                withAnimation(MotionTokens.momentum) { isMicPressed = pressing }
+                withAnimation(MotionTokens.momentum(reduceMotion: reduceMotion)) { isMicPressed = pressing }
                 if pressing {
                     viewModel.startVoiceInput()
                 } else {
@@ -359,10 +360,10 @@ struct RoundView: View {
             .opacity(viewModel.isStreaming ? 0.5 : 1)
             .allowsHitTesting(!viewModel.isStreaming)
             .onChange(of: speechRecognizer.isRecording) { isRecording in
-                if isRecording && !MotionTokens.reduceMotion {
+                if isRecording && !reduceMotion {
                     withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) { micPulse = true }
                 } else {
-                    withAnimation(MotionTokens.momentum) { micPulse = false }
+                    withAnimation(MotionTokens.momentum(reduceMotion: reduceMotion)) { micPulse = false }
                 }
             }
     }

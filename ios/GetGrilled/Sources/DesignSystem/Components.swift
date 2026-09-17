@@ -41,12 +41,13 @@ struct SegmentedControl<Option: Hashable>: View {
     let label: (Option) -> String
     @Binding var selection: Option
     @Namespace private var namespace
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         HStack(spacing: 2) {
             ForEach(options, id: \.self) { option in
                 Button {
-                    withAnimation(MotionTokens.standard) { selection = option }
+                    withAnimation(MotionTokens.standard(reduceMotion: reduceMotion)) { selection = option }
                 } label: {
                     Text(label(option))
                         .font(.onest(13, .semibold))
@@ -74,6 +75,8 @@ struct SegmentedControl<Option: Hashable>: View {
 /// on touch-down (SwiftUI's `isPressed` already fires there) with an instant scale, not just a
 /// fade, so the press reads as physical contact — and springs back rather than cutting.
 struct PrimaryButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.onest(14.5, .bold))
@@ -83,12 +86,14 @@ struct PrimaryButtonStyle: ButtonStyle {
             .background(DesignTokens.accent, in: RoundedRectangle(cornerRadius: 12))
             .opacity(configuration.isPressed ? 0.85 : 1)
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
-            .animation(MotionTokens.momentum, value: configuration.isPressed)
+            .animation(MotionTokens.momentum(reduceMotion: reduceMotion), value: configuration.isPressed)
     }
 }
 
 /// `.btn-secondary` — sunken surface button with a hairline border.
 struct SecondaryButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.onest(14.5, .bold))
@@ -99,7 +104,7 @@ struct SecondaryButtonStyle: ButtonStyle {
             .overlay(RoundedRectangle(cornerRadius: 12).stroke(DesignTokens.line, lineWidth: 1))
             .opacity(configuration.isPressed ? 0.85 : 1)
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
-            .animation(MotionTokens.momentum, value: configuration.isPressed)
+            .animation(MotionTokens.momentum(reduceMotion: reduceMotion), value: configuration.isPressed)
     }
 }
 
@@ -164,6 +169,7 @@ struct RingProgress: View {
     let percent: Int
     var size: CGFloat = 56
     var big: Bool = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ZStack {
@@ -172,12 +178,12 @@ struct RingProgress: View {
                 .trim(from: 0, to: CGFloat(percent) / 100)
                 .stroke(DesignTokens.accent, style: StrokeStyle(lineWidth: big ? 8 : 4, lineCap: .round))
                 .rotationEffect(.degrees(-90))
-                .animation(MotionTokens.standard, value: percent)
+                .animation(MotionTokens.standard(reduceMotion: reduceMotion), value: percent)
             Text("\(percent)%")
                 .font(.onest(big ? 18 : 12, .bold))
                 .foregroundStyle(DesignTokens.ink)
                 .contentTransition(.numericText())
-                .animation(MotionTokens.standard, value: percent)
+                .animation(MotionTokens.standard(reduceMotion: reduceMotion), value: percent)
         }
         .frame(width: size, height: size)
     }
@@ -187,6 +193,7 @@ struct RingProgress: View {
 struct RoundProgressBar: View {
     let total: Int
     let currentOrder: Int
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         HStack(spacing: 6) {
@@ -196,7 +203,7 @@ struct RoundProgressBar: View {
                     .frame(height: 5)
             }
         }
-        .animation(MotionTokens.standard, value: currentOrder)
+        .animation(MotionTokens.standard(reduceMotion: reduceMotion), value: currentOrder)
     }
 }
 
@@ -204,12 +211,13 @@ struct RoundProgressBar: View {
 /// down-scale on touch, spring release, matching the primary/secondary button feel.
 struct IconPressStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .opacity(isEnabled ? 1 : 0.5)
             .scaleEffect(configuration.isPressed ? 0.88 : 1)
-            .animation(MotionTokens.momentum, value: configuration.isPressed)
+            .animation(MotionTokens.momentum(reduceMotion: reduceMotion), value: configuration.isPressed)
     }
 }
 

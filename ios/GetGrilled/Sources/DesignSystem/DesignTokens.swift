@@ -70,23 +70,23 @@ enum DesignTokens {
 /// translated to SwiftUI's spring API. `response`/`dampingFraction` mirror Apple's own
 /// "response" + "damping ratio" spring parameterization, not a fixed-duration curve.
 enum MotionTokens {
-    static var reduceMotion: Bool { UIAccessibility.isReduceMotionEnabled }
-
     /// Default UI spring — critically damped, no overshoot. Use for anything that isn't a
     /// direct continuation of a gesture (state flips, list changes, disable/enable).
-    static var standard: Animation {
+    /// Takes the caller's own `\.accessibilityReduceMotion` reading so SwiftUI re-evaluates
+    /// this when the setting changes live, instead of a static UIKit global no view observes.
+    static func standard(reduceMotion: Bool) -> Animation {
         reduceMotion ? .easeOut(duration: 0.15) : .spring(response: 0.35, dampingFraction: 1.0)
     }
 
     /// Momentum spring — slight overshoot, reserved for interactions that follow a gesture's
     /// own momentum (press-release, a value the user just let go of).
-    static var momentum: Animation {
+    static func momentum(reduceMotion: Bool) -> Animation {
         reduceMotion ? .easeOut(duration: 0.15) : .spring(response: 0.4, dampingFraction: 0.8)
     }
 
     /// Materialize a surface (sheet/card/popover) into view — blur/scale together rather than
     /// a plain fade, so it reads as a real layer arriving.
-    static var materialize: AnyTransition {
+    static func materialize(reduceMotion: Bool) -> AnyTransition {
         reduceMotion
             ? .opacity
             : .scale(scale: 0.94, anchor: .center).combined(with: .opacity)
