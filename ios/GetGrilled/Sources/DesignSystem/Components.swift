@@ -33,28 +33,34 @@ extension View {
     func fakeFieldStyle() -> some View { modifier(FakeFieldBackground()) }
 }
 
-/// `.segmented` — pill-shaped segmented control with a sunken track.
+/// `.segmented` — pill-shaped segmented control with a sunken track. The selected pill is one
+/// shared shape that slides between options (`matchedGeometryEffect`) rather than cross-fading,
+/// so the control reads as one physical thumb moving — not two states swapping.
 struct SegmentedControl<Option: Hashable>: View {
     let options: [Option]
     let label: (Option) -> String
     @Binding var selection: Option
+    @Namespace private var namespace
 
     var body: some View {
         HStack(spacing: 2) {
             ForEach(options, id: \.self) { option in
                 Button {
-                    selection = option
+                    withAnimation(MotionTokens.standard) { selection = option }
                 } label: {
                     Text(label(option))
                         .font(.onest(13, .semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 9)
                         .foregroundStyle(selection == option ? DesignTokens.ink : DesignTokens.inkSoft)
-                        .background(
-                            selection == option ? DesignTokens.surface : Color.clear,
-                            in: RoundedRectangle(cornerRadius: 9)
-                        )
-                        .shadow(color: selection == option ? .black.opacity(0.06) : .clear, radius: 6, y: 2)
+                        .background {
+                            if selection == option {
+                                RoundedRectangle(cornerRadius: 9)
+                                    .fill(DesignTokens.surface)
+                                    .shadow(color: .black.opacity(0.06), radius: 6, y: 2)
+                                    .matchedGeometryEffect(id: "thumb", in: namespace)
+                            }
+                        }
                 }
             }
         }
@@ -64,7 +70,9 @@ struct SegmentedControl<Option: Hashable>: View {
     }
 }
 
-/// `.btn-primary` — pill-radius accent button with dark-on-accent label text.
+/// `.btn-primary` — pill-radius accent button with dark-on-accent label text. Presses respond
+/// on touch-down (SwiftUI's `isPressed` already fires there) with an instant scale, not just a
+/// fade, so the press reads as physical contact — and springs back rather than cutting.
 struct PrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -74,6 +82,8 @@ struct PrimaryButtonStyle: ButtonStyle {
             .foregroundStyle(DesignTokens.onAccent)
             .background(DesignTokens.accent, in: RoundedRectangle(cornerRadius: 12))
             .opacity(configuration.isPressed ? 0.85 : 1)
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .animation(MotionTokens.momentum, value: configuration.isPressed)
     }
 }
 
@@ -88,6 +98,8 @@ struct SecondaryButtonStyle: ButtonStyle {
             .background(DesignTokens.surfaceSunken, in: RoundedRectangle(cornerRadius: 12))
             .overlay(RoundedRectangle(cornerRadius: 12).stroke(DesignTokens.line, lineWidth: 1))
             .opacity(configuration.isPressed ? 0.85 : 1)
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .animation(MotionTokens.momentum, value: configuration.isPressed)
     }
 }
 
@@ -160,9 +172,12 @@ struct RingProgress: View {
                 .trim(from: 0, to: CGFloat(percent) / 100)
                 .stroke(DesignTokens.accent, style: StrokeStyle(lineWidth: big ? 8 : 4, lineCap: .round))
                 .rotationEffect(.degrees(-90))
+                .animation(MotionTokens.standard, value: percent)
             Text("\(percent)%")
                 .font(.onest(big ? 18 : 12, .bold))
                 .foregroundStyle(DesignTokens.ink)
+                .contentTransition(.numericText())
+                .animation(MotionTokens.standard, value: percent)
         }
         .frame(width: size, height: size)
     }
@@ -179,8 +194,19 @@ struct RoundProgressBar: View {
                 Capsule()
                     .fill(index < currentOrder ? DesignTokens.success : (index == currentOrder ? DesignTokens.accent : DesignTokens.line))
                     .frame(height: 5)
+                    .animation(MotionTokens.standard, value: currentOrder)
             }
         }
+    }
+}
+
+/// Press-scale for small icon/pill controls that don't have their own `ButtonStyle` — instant
+/// down-scale on touch, spring release, matching the primary/secondary button feel.
+struct IconPressStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.88 : 1)
+            .animation(MotionTokens.momentum, value: configuration.isPressed)
     }
 }
 
@@ -206,6 +232,7 @@ struct NarratorSpeakerButton: View {
                 .background(DesignTokens.surface, in: Circle())
                 .overlay(Circle().stroke(DesignTokens.line, lineWidth: 1))
         }
+        .buttonStyle(IconPressStyle())
     }
 }
 
@@ -225,6 +252,7 @@ struct ChipButton: View {
                 .background(DesignTokens.surfaceSunken, in: Capsule())
                 .overlay(Capsule().stroke(DesignTokens.line, lineWidth: 1))
         }
+        .buttonStyle(IconPressStyle())
         .disabled(disabled)
     }
 }
