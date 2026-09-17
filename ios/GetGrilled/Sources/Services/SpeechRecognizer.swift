@@ -13,6 +13,9 @@ enum SpeechAuthorizationStatus {
 final class SpeechRecognizer: ObservableObject {
     @Published private(set) var isRecording = false
     @Published var errorMessage: String?
+    /// Updated live as the recognizer hears words, before the final commit on `stop()` — lets
+    /// the UI show a grayed-out "what I'm hearing" preview while the candidate is still talking.
+    @Published private(set) var partialTranscript = ""
 
     private let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
     private let audioEngine = AVAudioEngine()
@@ -45,6 +48,7 @@ final class SpeechRecognizer: ObservableObject {
         }
         self.onFinalText = onFinalText
         errorMessage = nil
+        partialTranscript = ""
 
         let audioSession = AVAudioSession.sharedInstance()
         do {
@@ -67,6 +71,7 @@ final class SpeechRecognizer: ObservableObject {
         task = recognizer.recognitionTask(with: request) { [weak self] result, error in
             if let result {
                 latestTranscript = result.bestTranscription.formattedString
+                Task { @MainActor in self?.partialTranscript = latestTranscript }
             }
             if error != nil {
                 Task { @MainActor in self?.finishRecording(withText: latestTranscript) }
@@ -101,6 +106,7 @@ final class SpeechRecognizer: ObservableObject {
         guard isRecording else { return }
         isRecording = false
         cleanUp()
+        partialTranscript = ""
         onFinalText?(text.trimmingCharacters(in: .whitespacesAndNewlines))
         onFinalText = nil
     }

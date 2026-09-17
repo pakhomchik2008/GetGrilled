@@ -3,9 +3,18 @@ import SwiftUI
 
 struct RoundView: View {
     @ObservedObject var viewModel: RoundSessionViewModel
+    // Observed separately from `viewModel` so live partial-transcript updates while recording
+    // (which don't touch any of RoundSessionViewModel's own @Published properties) still
+    // trigger a redraw here.
+    @ObservedObject var speechRecognizer: SpeechRecognizer
     @StateObject private var camera = CameraMirrorService()
     @State private var isCameraOn = false
     @State private var photoItem: PhotosPickerItem?
+
+    init(viewModel: RoundSessionViewModel) {
+        self.viewModel = viewModel
+        self.speechRecognizer = viewModel.speechRecognizer
+    }
 
     private var lastInterviewerMessage: ChatMessage? {
         viewModel.messages.last(where: { $0.role == .interviewer })
@@ -219,12 +228,17 @@ struct RoundView: View {
             attachButton
             pasteButton
 
-            TextField("Hold to talk, or type…", text: $viewModel.explanationText, axis: .vertical)
-                .textFieldStyle(.plain)
-                .font(.onest(14))
-                .foregroundStyle(DesignTokens.ink)
-                .lineLimit(1...4)
-                .padding(.horizontal, 8)
+            if speechRecognizer.isRecording {
+                liveTranscriptPreview
+                    .padding(.horizontal, 8)
+            } else {
+                TextField("Hold to talk, or type…", text: $viewModel.explanationText, axis: .vertical)
+                    .textFieldStyle(.plain)
+                    .font(.onest(14))
+                    .foregroundStyle(DesignTokens.ink)
+                    .lineLimit(1...4)
+                    .padding(.horizontal, 8)
+            }
 
             micButton
             sendButton
@@ -268,12 +282,33 @@ struct RoundView: View {
         .disabled(viewModel.isStreaming)
     }
 
+    /// While holding the mic, shows already-typed/committed text in normal ink plus the
+    /// in-progress recognized speech in gray — so the candidate can read back what the
+    /// recognizer is hearing as they talk, before it commits on release.
+    private var liveTranscriptPreview: some View {
+        let committed = viewModel.explanationText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let partial = speechRecognizer.partialTranscript
+
+        return Group {
+            if partial.isEmpty && committed.isEmpty {
+                Text("Listening…")
+                    .foregroundStyle(DesignTokens.inkFaint)
+            } else {
+                Text(committed.isEmpty ? "" : committed + " ").foregroundColor(DesignTokens.ink)
+                    + Text(partial).foregroundColor(DesignTokens.inkFaint)
+            }
+        }
+        .font(.onest(14))
+        .lineLimit(1...4)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
     private var micButton: some View {
-        Image(systemName: viewModel.speechRecognizer.isRecording ? "mic.fill" : "mic")
+        Image(systemName: speechRecognizer.isRecording ? "mic.fill" : "mic")
             .font(.system(size: 14))
             .foregroundStyle(DesignTokens.onAccent)
             .frame(width: 34, height: 34)
-            .background(viewModel.speechRecognizer.isRecording ? DesignTokens.danger : DesignTokens.accent, in: Circle())
+            .background(speechRecognizer.isRecording ? DesignTokens.danger : DesignTokens.accent, in: Circle())
             .onLongPressGesture(minimumDuration: 0, maximumDistance: .infinity, pressing: { pressing in
                 if pressing {
                     viewModel.startVoiceInput()
