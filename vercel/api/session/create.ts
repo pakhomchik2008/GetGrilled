@@ -20,7 +20,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     return;
   }
 
-  const { mode, roleTitle, seniority, focusNotes, planStageId } = req.body ?? {};
+  const { mode, roleTitle, seniority, focusNotes, planStageId, jobContext } = req.body ?? {};
   if (!isSessionMode(mode)) {
     res.status(400).json({ error: "mode must be one of test, competition" });
     return;
@@ -35,6 +35,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   }
   if (planStageId !== undefined && planStageId !== null && typeof planStageId !== "string") {
     res.status(400).json({ error: "planStageId must be a string or null" });
+    return;
+  }
+  if (jobContext !== undefined && jobContext !== null && typeof jobContext !== "string") {
+    res.status(400).json({ error: "jobContext must be a string or null" });
+    return;
+  }
+  // Client already truncates before sending — cap again server-side, never trust the client.
+  const MAX_JOB_CONTEXT_LENGTH = 8000;
+  if (typeof jobContext === "string" && jobContext.length > MAX_JOB_CONTEXT_LENGTH) {
+    res.status(400).json({ error: `jobContext must be under ${MAX_JOB_CONTEXT_LENGTH} characters` });
     return;
   }
 
@@ -62,7 +72,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     roleTitle: roleTitle.trim(),
     seniority,
     focusNotes: typeof focusNotes === "string" && focusNotes.trim().length > 0 ? focusNotes.trim() : null,
-    planStageId: planStageId ?? null
+    planStageId: planStageId ?? null,
+    jobContext: typeof jobContext === "string" && jobContext.trim().length > 0 ? jobContext.trim() : null
   });
   await createRoundsForSession(sessionId);
   const firstRound = await getRoundByOrder(sessionId, 0);
