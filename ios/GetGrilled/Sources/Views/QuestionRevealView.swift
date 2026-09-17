@@ -57,13 +57,21 @@ struct QuestionRevealView: View {
 
             Spacer()
 
+            if let errorMessage = viewModel.errorMessage {
+                Text(errorMessage)
+                    .font(.onest(12))
+                    .foregroundStyle(DesignTokens.danger)
+                    .multilineTextAlignment(.center)
+                    .padding(.bottom, 8)
+            }
+
             Button {
                 viewModel.proceedToRound()
             } label: {
                 Text("I'm ready to answer →")
             }
             .buttonStyle(.ggPrimary)
-            .disabled(viewModel.isStreaming)
+            .disabled(viewModel.isStreaming || viewModel.messages.last?.content.isEmpty != false)
         }
         .padding(20)
         .background(DesignTokens.bg.ignoresSafeArea())
