@@ -10,6 +10,8 @@ struct RoundView: View {
     @StateObject private var camera = CameraMirrorService()
     @State private var isCameraOn = false
     @State private var photoItem: PhotosPickerItem?
+    @State private var isMicPressed = false
+    @State private var micPulse = false
 
     init(viewModel: RoundSessionViewModel) {
         self.viewModel = viewModel
@@ -61,6 +63,10 @@ struct RoundView: View {
                                 .padding(11)
                                 .background(DesignTokens.accentWash, in: RoundedRectangle(cornerRadius: 14))
                         }
+                        // Arrives from below like a sent chat bubble — same path it'll take
+                        // out when the interviewer's next reply pushes it off (spatial consistency).
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .id(liveCandidateReply.id)
                     }
 
                     HStack(spacing: 6) {
@@ -72,14 +78,19 @@ struct RoundView: View {
 
                     if viewModel.currentRound?.type.usesCodeEditor == true {
                         codeEditorBlock
+                            .transition(MotionTokens.materialize)
                     }
 
                     if let pendingImage = viewModel.pendingImage {
                         attachedImagePreview(pendingImage)
+                            .transition(MotionTokens.materialize)
                     }
                 }
                 .padding(.horizontal)
                 .padding(.top, 8)
+                .animation(MotionTokens.standard, value: viewModel.messages)
+                .animation(MotionTokens.standard, value: viewModel.currentRound?.type.usesCodeEditor)
+                .animation(MotionTokens.standard, value: viewModel.pendingImage != nil)
             }
 
             Divider()
@@ -99,11 +110,15 @@ struct RoundView: View {
 
             if let errorMessage = viewModel.errorMessage {
                 Text(errorMessage).font(.onest(12)).foregroundStyle(DesignTokens.danger).padding(.horizontal)
+                    .transition(.opacity)
             }
             if let voiceError = viewModel.voiceInputErrorMessage {
                 Text(voiceError).font(.onest(12)).foregroundStyle(DesignTokens.warn).padding(.horizontal)
+                    .transition(.opacity)
             }
         }
+        .animation(MotionTokens.standard, value: viewModel.errorMessage)
+        .animation(MotionTokens.standard, value: viewModel.voiceInputErrorMessage)
         .background(DesignTokens.bg.ignoresSafeArea())
         .navigationTitle(viewModel.currentRound?.type.displayName ?? "Round")
         .onDisappear { camera.stop() }
@@ -125,9 +140,7 @@ struct RoundView: View {
                 Text("Alex · your interviewer").font(.onest(12, .semibold)).foregroundStyle(DesignTokens.inkFaint)
 
                 if let message = lastInterviewerMessage {
-                    Text(message.content.isEmpty ? "…" : message.content)
-                        .font(.onest(14.5))
-                        .foregroundStyle(DesignTokens.ink)
+                    MarkdownText(content: message.content.isEmpty ? "…" : message.content, size: 14.5, color: DesignTokens.ink)
                         .lineSpacing(3)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(14)
@@ -137,13 +150,19 @@ struct RoundView: View {
                         .overlay(alignment: .topTrailing) {
                             NarratorSpeakerButton(narrator: viewModel.narrator).padding(8)
                         }
+                        // New question materializes as its own bubble arriving, not a hard
+                        // content swap inside the old one.
+                        .id(message.id)
+                        .transition(MotionTokens.materialize)
                 }
             }
             .padding(.top, 22)
             .padding(.horizontal, 16)
             .padding(.bottom, 18)
+            .animation(MotionTokens.standard, value: lastInterviewerMessage?.id)
 
             cameraCorner.padding(10)
+                .animation(MotionTokens.standard, value: isCameraOn)
         }
     }
 
@@ -161,6 +180,7 @@ struct RoundView: View {
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .overlay(RoundedRectangle(cornerRadius: 12).stroke(DesignTokens.surface, lineWidth: 2))
             .shadow(color: .black.opacity(0.2), radius: 4)
+            .transition(MotionTokens.materialize)
             .onTapGesture { isCameraOn = false; camera.stop() }
         } else {
             Button {
@@ -174,6 +194,8 @@ struct RoundView: View {
                     .background(DesignTokens.surface, in: Circle())
                     .overlay(Circle().stroke(DesignTokens.line, lineWidth: 1))
             }
+            .buttonStyle(IconPressStyle())
+            .transition(MotionTokens.materialize)
             if let cameraError = camera.errorMessage {
                 Text(cameraError).font(.system(size: 8)).foregroundStyle(.orange).frame(width: 60)
             }
@@ -256,6 +278,7 @@ struct RoundView: View {
                 .frame(width: 34, height: 34)
                 .background(DesignTokens.surface, in: Circle())
         }
+        .buttonStyle(IconPressStyle())
         .onChange(of: photoItem) { newItem in
             Task {
                 if let data = try? await newItem?.loadTransferable(type: Data.self), let image = UIImage(data: data) {
@@ -279,6 +302,7 @@ struct RoundView: View {
                 .frame(width: 34, height: 34)
                 .background(DesignTokens.surface, in: Circle())
         }
+        .buttonStyle(IconPressStyle())
         .disabled(viewModel.isStreaming)
     }
 
@@ -303,13 +327,19 @@ struct RoundView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    /// Hold-to-talk: scales down the instant the finger lands (response starts on press, not
+    /// release) and breathes gently while recording — the ongoing-state signal a fixed icon
+    /// swap can't give. Both read directly off `isMicPressed`/`isRecording`, never a delayed echo.
     private var micButton: some View {
         Image(systemName: speechRecognizer.isRecording ? "mic.fill" : "mic")
             .font(.system(size: 14))
             .foregroundStyle(DesignTokens.onAccent)
             .frame(width: 34, height: 34)
             .background(speechRecognizer.isRecording ? DesignTokens.danger : DesignTokens.accent, in: Circle())
+            .scaleEffect((isMicPressed ? 0.9 : 1) * (micPulse ? 1.1 : 1))
+            .animation(MotionTokens.momentum, value: isMicPressed)
             .onLongPressGesture(minimumDuration: 0, maximumDistance: .infinity, pressing: { pressing in
+                isMicPressed = pressing
                 if pressing {
                     viewModel.startVoiceInput()
                 } else {
@@ -318,6 +348,13 @@ struct RoundView: View {
             }, perform: {})
             .opacity(viewModel.isStreaming ? 0.5 : 1)
             .allowsHitTesting(!viewModel.isStreaming)
+            .onChange(of: speechRecognizer.isRecording) { isRecording in
+                if isRecording && !MotionTokens.reduceMotion {
+                    withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) { micPulse = true }
+                } else {
+                    withAnimation(MotionTokens.momentum) { micPulse = false }
+                }
+            }
     }
 
     private var sendButton: some View {
@@ -330,6 +367,7 @@ struct RoundView: View {
                 .frame(width: 34, height: 34)
                 .background(DesignTokens.ink, in: Circle())
         }
+        .buttonStyle(IconPressStyle())
         .disabled(viewModel.isStreaming)
     }
 
