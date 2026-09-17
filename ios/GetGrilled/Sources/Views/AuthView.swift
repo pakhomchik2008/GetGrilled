@@ -7,6 +7,9 @@ struct AuthView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var mode: Mode = .signIn
     @State private var showingPaywall = false
+    @State private var debugMessage: String?
+    @State private var isDebugWorking = false
+    private let api = RoundAPIClient()
     /// Set when presented as a modal sheet (from a screen without its own tab bar); a plain
     /// tab-bar destination shows no "Close" button.
     var isModal: Bool = true
@@ -41,6 +44,8 @@ struct AuthView: View {
                     if !purchases.isPro {
                         upsellCard
                     }
+
+                    debugSection
                 }
                 .padding(20)
             }
@@ -73,6 +78,49 @@ struct AuthView: View {
         .padding(16)
         .background(DesignTokens.surfaceSunken, in: RoundedRectangle(cornerRadius: 16))
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(DesignTokens.line, lineWidth: 1))
+    }
+
+    /// Bypasses the weekly free-session limit for whichever account is signed in on this device
+    /// (anonymous included) — this is what checkWeeklyLimit actually reads server-side, unlike
+    /// `purchases.isPro` above which only reflects RevenueCat and won't move until that's
+    /// configured. TODO: remove this whole section (and grant-unlimited.ts) before App Store
+    /// submission — RevenueCat is the real gate.
+    private var debugSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("DEBUG").font(.onest(11, .bold)).tracking(0.4).foregroundStyle(DesignTokens.danger)
+            Text("Bypasses weekly session limits for testing. Remove before shipping.")
+                .font(.onest(11))
+                .foregroundStyle(DesignTokens.inkFaint)
+            HStack(spacing: 8) {
+                Button("Unlock unlimited") { setDebugSubscription(paid: true) }
+                    .buttonStyle(.ggSecondary)
+                Button("Reset to free") { setDebugSubscription(paid: false) }
+                    .buttonStyle(.ggSecondary)
+            }
+            if isDebugWorking {
+                ProgressView()
+            }
+            if let debugMessage {
+                Text(debugMessage).font(.onest(11)).foregroundStyle(DesignTokens.inkSoft)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(DesignTokens.dangerWash, in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    private func setDebugSubscription(paid: Bool) {
+        isDebugWorking = true
+        debugMessage = nil
+        Task {
+            defer { isDebugWorking = false }
+            do {
+                let result = try await api.debugSetSubscription(paid: paid)
+                debugMessage = "Backend subscriptionStatus = \(result.subscriptionStatus)"
+            } catch {
+                debugMessage = "Failed: \(error.localizedDescription)"
+            }
+        }
     }
 
     private func signedInView(email: String) -> some View {

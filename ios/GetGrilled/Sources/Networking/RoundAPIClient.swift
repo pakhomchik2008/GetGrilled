@@ -166,4 +166,22 @@ struct RoundAPIClient {
         )
         return try await decodedResponse(for: request, as: GeneratePlanResponse.self)
     }
+
+    // MARK: Debug (remove before App Store submission — see grant-unlimited.ts)
+
+    struct DebugSubscriptionBody: Encodable {
+        let status: String
+    }
+    struct DebugSubscriptionResponse: Decodable {
+        let subscriptionStatus: String
+    }
+
+    @discardableResult
+    func debugSetSubscription(paid: Bool) async throws -> DebugSubscriptionResponse {
+        let request = try await authorizedRequest(
+            path: "api/debug/grant-unlimited",
+            body: DebugSubscriptionBody(status: paid ? "paid" : "free")
+        )
+        return try await decodedResponse(for: request, as: DebugSubscriptionResponse.self)
+    }
 }
