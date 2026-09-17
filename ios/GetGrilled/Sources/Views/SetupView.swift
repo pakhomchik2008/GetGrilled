@@ -5,6 +5,8 @@ struct SetupView: View {
     @ObservedObject var viewModel: RoundSessionViewModel
     @State private var jobLinkText = ""
     @State private var showingPDFPicker = false
+    @State private var showingTextPaste = false
+    @State private var pastedJobText = ""
 
     var body: some View {
         ScrollView {
@@ -94,7 +96,7 @@ struct SetupView: View {
     private var jobPostingSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             FieldLabel("Job posting (optional)")
-            Text("Paste the role's job link, or attach the PDF — helps tailor questions to the actual role.")
+            Text("Paste the role's job link (LinkedIn, Greenhouse, etc.), attach a PDF, or paste the text — helps tailor questions to the actual role.")
                 .font(.onest(11.5))
                 .foregroundStyle(DesignTokens.inkFaint)
 
@@ -139,6 +141,28 @@ struct SetupView: View {
                         ProgressView()
                         Text("Reading…").font(.onest(11)).foregroundStyle(DesignTokens.inkFaint)
                     }
+                }
+
+                if showingTextPaste {
+                    VStack(alignment: .leading, spacing: 6) {
+                        TextField("Paste the job description text…", text: $pastedJobText, axis: .vertical)
+                            .textFieldStyle(.plain)
+                            .font(.onest(13))
+                            .lineLimit(4...10)
+                            .fakeFieldStyle()
+                        Button("Attach this text") {
+                            viewModel.attachJobText(pastedJobText)
+                            pastedJobText = ""
+                            showingTextPaste = false
+                        }
+                        .font(.onest(12, .semibold))
+                        .foregroundStyle(DesignTokens.accentStrong)
+                        .disabled(pastedJobText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    }
+                } else {
+                    Button("Or paste the description text instead") { showingTextPaste = true }
+                        .font(.onest(11.5))
+                        .foregroundStyle(DesignTokens.accentStrong)
                 }
             }
 
