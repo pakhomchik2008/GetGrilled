@@ -88,7 +88,7 @@ struct RoundView: View {
                 }
                 .padding(.horizontal)
                 .padding(.top, 8)
-                .animation(MotionTokens.standard, value: viewModel.messages)
+                .animation(MotionTokens.standard, value: viewModel.messages.map(\.id))
                 .animation(MotionTokens.standard, value: viewModel.currentRound?.type.usesCodeEditor)
                 .animation(MotionTokens.standard, value: viewModel.pendingImage != nil)
             }
@@ -140,7 +140,18 @@ struct RoundView: View {
                 Text("Alex · your interviewer").font(.onest(12, .semibold)).foregroundStyle(DesignTokens.inkFaint)
 
                 if let message = lastInterviewerMessage {
-                    MarkdownText(content: message.content.isEmpty ? "…" : message.content, size: 14.5, color: DesignTokens.ink)
+                    // Plain text while this message is still streaming in — parsing partial
+                    // Markdown mid-token can swallow a delimiter's characters before its pair
+                    // has arrived. Switch to the rich render once the stream settles.
+                    Group {
+                        if viewModel.isStreaming {
+                            Text(message.content.isEmpty ? "…" : message.content)
+                                .font(.onest(14.5))
+                                .foregroundStyle(DesignTokens.ink)
+                        } else {
+                            MarkdownText(content: message.content.isEmpty ? "…" : message.content, size: 14.5, color: DesignTokens.ink)
+                        }
+                    }
                         .lineSpacing(3)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(14)
@@ -337,9 +348,8 @@ struct RoundView: View {
             .frame(width: 34, height: 34)
             .background(speechRecognizer.isRecording ? DesignTokens.danger : DesignTokens.accent, in: Circle())
             .scaleEffect((isMicPressed ? 0.9 : 1) * (micPulse ? 1.1 : 1))
-            .animation(MotionTokens.momentum, value: isMicPressed)
             .onLongPressGesture(minimumDuration: 0, maximumDistance: .infinity, pressing: { pressing in
-                isMicPressed = pressing
+                withAnimation(MotionTokens.momentum) { isMicPressed = pressing }
                 if pressing {
                     viewModel.startVoiceInput()
                 } else {

@@ -194,17 +194,20 @@ struct RoundProgressBar: View {
                 Capsule()
                     .fill(index < currentOrder ? DesignTokens.success : (index == currentOrder ? DesignTokens.accent : DesignTokens.line))
                     .frame(height: 5)
-                    .animation(MotionTokens.standard, value: currentOrder)
             }
         }
+        .animation(MotionTokens.standard, value: currentOrder)
     }
 }
 
 /// Press-scale for small icon/pill controls that don't have their own `ButtonStyle` — instant
 /// down-scale on touch, spring release, matching the primary/secondary button feel.
 struct IconPressStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
+            .opacity(isEnabled ? 1 : 0.5)
             .scaleEffect(configuration.isPressed ? 0.88 : 1)
             .animation(MotionTokens.momentum, value: configuration.isPressed)
     }

@@ -33,7 +33,16 @@ struct QuestionRevealView: View {
                 Text("Alex · your interviewer").font(.onest(13, .semibold)).foregroundStyle(DesignTokens.inkFaint)
 
                 if let question = viewModel.messages.last {
-                    MarkdownText(content: question.content.isEmpty ? "…" : question.content, size: 16, color: DesignTokens.ink)
+                    // Plain text while streaming in — see RoundView's callStage for why.
+                    Group {
+                        if viewModel.isStreaming {
+                            Text(question.content.isEmpty ? "…" : question.content)
+                                .font(.onest(16))
+                                .foregroundStyle(DesignTokens.ink)
+                        } else {
+                            MarkdownText(content: question.content.isEmpty ? "…" : question.content, size: 16, color: DesignTokens.ink)
+                        }
+                    }
                         .lineSpacing(4)
                         .padding(18)
                         .padding(.trailing, 20)
