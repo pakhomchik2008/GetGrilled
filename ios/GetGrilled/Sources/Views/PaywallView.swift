@@ -7,21 +7,36 @@ struct PaywallView: View {
     @ObservedObject var purchases = PurchasesService.shared
     @Environment(\.dismiss) private var dismiss
 
+    private let benefits = [
+        "Unlimited Test & Competition sessions",
+        "Full communication & efficiency breakdown, not just correctness",
+        "Full session history, kept forever"
+    ]
+
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 20) {
-                    VStack(spacing: 6) {
-                        Text("GetGrilled Pro").font(.onest(24, .bold)).foregroundStyle(DesignTokens.ink)
-                        Text("Unlimited Test and Competition sessions, every week.")
-                            .font(.onest(14))
-                            .foregroundStyle(DesignTokens.inkSoft)
-                            .multilineTextAlignment(.center)
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("FREE TIER")
+                        .font(.onest(12, .bold))
+                        .tracking(0.4)
+                        .foregroundStyle(DesignTokens.accentStrong)
+
+                    Text("Unlock unlimited sessions")
+                        .font(.onest(19, .bold))
+                        .foregroundStyle(DesignTokens.ink)
+
+                    VStack(alignment: .leading, spacing: 7) {
+                        ForEach(benefits, id: \.self) { benefit in
+                            HStack(alignment: .top, spacing: 7) {
+                                Text("✓").font(.onest(12, .bold)).foregroundStyle(DesignTokens.success)
+                                Text(benefit).font(.onest(12.5)).foregroundStyle(DesignTokens.inkSoft)
+                            }
+                        }
                     }
-                    .padding(.top, 12)
 
                     if purchases.offerings == nil && purchases.errorMessage == nil {
-                        ProgressView().padding(.top, 24)
+                        ProgressView().frame(maxWidth: .infinity).padding(.top, 12)
                     }
 
                     if let current = purchases.offerings?.current {
@@ -30,22 +45,29 @@ struct PaywallView: View {
                                 packageRow(package)
                             }
                         }
+                        .padding(.top, 4)
                     } else if let message = purchases.errorMessage {
                         Text(message)
-                            .font(.onest(13))
+                            .font(.onest(12.5))
                             .foregroundStyle(DesignTokens.danger)
-                            .padding()
+                            .padding(12)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                             .background(DesignTokens.dangerWash, in: RoundedRectangle(cornerRadius: 12))
                     }
 
                     Button("Restore purchases") {
                         Task { await purchases.restorePurchases() }
                     }
-                    .font(.onest(13, .medium))
+                    .font(.onest(13, .semibold))
                     .foregroundStyle(DesignTokens.inkSoft)
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 2)
                     .disabled(purchases.isLoading)
                 }
-                .padding()
+                .padding(16)
+                .background(DesignTokens.surfaceSunken, in: RoundedRectangle(cornerRadius: 16))
+                .overlay(RoundedRectangle(cornerRadius: 16).stroke(DesignTokens.line, lineWidth: 1))
+                .padding(20)
             }
             .background(DesignTokens.bg.ignoresSafeArea())
             .navigationTitle("Upgrade")
@@ -68,20 +90,20 @@ struct PaywallView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(package.storeProduct.localizedTitle)
-                        .font(.onest(15, .semibold))
+                        .font(.onest(14.5, .semibold))
                         .foregroundStyle(DesignTokens.ink)
                     Text(package.storeProduct.localizedDescription)
-                        .font(.onest(12))
+                        .font(.onest(11.5))
                         .foregroundStyle(DesignTokens.inkSoft)
                 }
                 Spacer()
                 Text(package.storeProduct.localizedPriceString)
-                    .font(.onest(15, .bold))
+                    .font(.onest(14.5, .bold))
                     .foregroundStyle(DesignTokens.accentStrong)
             }
-            .padding(14)
-            .background(DesignTokens.surface, in: RoundedRectangle(cornerRadius: 14))
-            .overlay(RoundedRectangle(cornerRadius: 14).stroke(DesignTokens.line, lineWidth: 1))
+            .padding(13)
+            .background(DesignTokens.surface, in: RoundedRectangle(cornerRadius: 12))
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(DesignTokens.line, lineWidth: 1))
         }
         .disabled(purchases.isLoading)
     }

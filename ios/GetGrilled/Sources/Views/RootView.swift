@@ -4,41 +4,43 @@ struct RootView: View {
     @StateObject private var v2ViewModel = RoundSessionViewModel()
     @StateObject private var legacyViewModel = InterviewViewModel()
     @StateObject private var authViewModel = AuthViewModel()
-    @State private var showingAccount = false
-    @State private var showingHistory = false
-    @State private var showingPlans = false
-    @State private var showingPaywall = false
     @State private var resumableLegacySession: SessionDetail?
     @State private var isResumingLegacy = false
+    @State private var selectedTab: Tab = .practice
 
     private let dataService = SupabaseDataService()
 
+    private enum Tab { case practice, plans, history, profile }
+
     var body: some View {
-        NavigationStack {
-            content
-                .toolbar {
-                    if !isResumingLegacy && v2ViewModel.phase == .setup {
-                        ToolbarItem(placement: .navigationBarLeading) {
-                            Button("Plans") { showingPlans = true }
-                        }
-                        ToolbarItem(placement: .navigationBarLeading) {
-                            Button("History") { showingHistory = true }
-                        }
-                        ToolbarItem(placement: .navigationBarTrailing) {
-                            Button("Upgrade") { showingPaywall = true }
-                        }
-                        ToolbarItem(placement: .navigationBarTrailing) {
-                            Button("Account") { showingAccount = true }
-                        }
+        Group {
+            if isResumingLegacy {
+                NavigationStack { legacyContent }
+            } else {
+                TabView(selection: $selectedTab) {
+                    NavigationStack {
+                        RoundSessionFlowView(viewModel: v2ViewModel)
+                            .toolbar(.hidden, for: .navigationBar)
                     }
+                    .tabItem { Label("Practice", systemImage: "flame.fill") }
+                    .tag(Tab.practice)
+
+                    PlansView { plan, stage in
+                        v2ViewModel.startPlanStage(plan: plan, stage: stage)
+                        selectedTab = .practice
+                    }
+                    .tabItem { Label("Plans", systemImage: "checklist") }
+                    .tag(Tab.plans)
+
+                    HistoryView()
+                        .tabItem { Label("History", systemImage: "clock") }
+                        .tag(Tab.history)
+
+                    AuthView(viewModel: authViewModel, isModal: false)
+                        .tabItem { Label("Profile", systemImage: "person.crop.circle") }
+                        .tag(Tab.profile)
                 }
-        }
-        .sheet(isPresented: $showingAccount) { AuthView(viewModel: authViewModel) }
-        .sheet(isPresented: $showingHistory) { HistoryView() }
-        .sheet(isPresented: $showingPaywall) { PaywallView() }
-        .sheet(isPresented: $showingPlans) {
-            PlansView { plan, stage in
-                v2ViewModel.startPlanStage(plan: plan, stage: stage)
+                .tint(DesignTokens.accentStrong)
             }
         }
         .task { await checkForResumableLegacySession() }
@@ -56,15 +58,6 @@ struct RootView: View {
             Button("Start New", role: .cancel) { resumableLegacySession = nil }
         } message: {
             Text("You have an unfinished \(resumableLegacySession?.difficulty.displayName.lowercased() ?? "") interview from before the app's redesign.")
-        }
-    }
-
-    @ViewBuilder
-    private var content: some View {
-        if isResumingLegacy {
-            legacyContent
-        } else {
-            RoundSessionFlowView(viewModel: v2ViewModel)
         }
     }
 

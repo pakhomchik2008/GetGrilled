@@ -9,21 +9,13 @@ struct PlanDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 HStack(spacing: 16) {
-                    ZStack {
-                        Circle().stroke(Color(.systemGray5), lineWidth: 8)
-                        Circle()
-                            .trim(from: 0, to: CGFloat(plan.progressPercent) / 100)
-                            .stroke(Color.accentColor, style: StrokeStyle(lineWidth: 8, lineCap: .round))
-                            .rotationEffect(.degrees(-90))
-                        Text("\(plan.progressPercent)%").font(.headline)
-                    }
-                    .frame(width: 84, height: 84)
+                    RingProgress(percent: plan.progressPercent, size: 84, big: true)
 
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(plan.role_title).font(.title3.bold())
-                        Text(plan.seniority.displayName).foregroundStyle(.secondary)
+                        Text(plan.role_title).font(.onest(17, .bold)).foregroundStyle(DesignTokens.ink)
+                        Text(plan.seniority.displayName).font(.onest(13)).foregroundStyle(DesignTokens.inkSoft)
                         if let companyContext = plan.company_context, !companyContext.isEmpty {
-                            Text(companyContext).font(.caption).foregroundStyle(.secondary)
+                            Text(companyContext).font(.onest(11.5)).foregroundStyle(DesignTokens.inkFaint)
                         }
                     }
                 }
@@ -32,7 +24,7 @@ struct PlanDetailView: View {
                     ForEach(plan.sortedStages) { stage in
                         stageRow(stage)
                         if stage.id != plan.sortedStages.last?.id {
-                            Divider()
+                            Divider().overlay(DesignTokens.line)
                         }
                     }
                 }
@@ -42,32 +34,44 @@ struct PlanDetailView: View {
                         onContinueStage?(plan, next)
                         dismiss()
                     } label: {
-                        Text("Continue plan").frame(maxWidth: .infinity)
+                        Text("Continue plan")
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.ggPrimary)
                 } else {
-                    Text("All stages complete 🎉").font(.subheadline).foregroundStyle(.secondary)
+                    Text("All stages complete 🎉").font(.onest(13.5)).foregroundStyle(DesignTokens.inkSoft)
                 }
             }
-            .padding()
+            .padding(20)
         }
+        .background(DesignTokens.bg.ignoresSafeArea())
         .navigationTitle("Plan")
         .navigationBarTitleDisplayMode(.inline)
     }
 
     private func stageRow(_ stage: PlanStageRow) -> some View {
         HStack(spacing: 10) {
-            Image(systemName: stage.isCompleted ? "checkmark.circle.fill" : "circle")
-                .foregroundStyle(stage.isCompleted ? Color.green : Color(.systemGray3))
+            ZStack {
+                Circle()
+                    .fill(stage.isCompleted ? DesignTokens.successWash : Color.clear)
+                Circle()
+                    .stroke(stage.isCompleted ? Color.clear : DesignTokens.line, lineWidth: 1.5)
+                if stage.isCompleted {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(DesignTokens.success)
+                }
+            }
+            .frame(width: 20, height: 20)
+
             VStack(alignment: .leading, spacing: 1) {
-                Text(stage.title).font(.subheadline.weight(.medium))
+                Text(stage.title).font(.onest(13, .medium)).foregroundStyle(DesignTokens.ink)
                 Text(stage.isCompleted ? "Completed" : stage.focus_description)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.onest(11))
+                    .foregroundStyle(DesignTokens.inkFaint)
             }
             Spacer()
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, 9)
     }
 }
 

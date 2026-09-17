@@ -5,33 +5,46 @@ struct QuestionRevealView: View {
     @ObservedObject var viewModel: RoundSessionViewModel
 
     var body: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: 0) {
             if let round = viewModel.currentRound {
-                VStack(spacing: 4) {
-                    Text(round.type.displayName.uppercased())
-                        .font(.onest(12, .bold))
-                        .foregroundStyle(DesignTokens.accentStrong)
-                    Text("Round \(round.order + 1) of \(viewModel.totalRounds)")
-                        .font(.onest(12))
-                        .foregroundStyle(DesignTokens.inkSoft)
+                VStack(spacing: 10) {
+                    HStack {
+                        Text(round.type.displayName.uppercased())
+                            .font(.onest(11.5, .bold))
+                            .tracking(0.4)
+                            .foregroundStyle(DesignTokens.accentStrong)
+                        Spacer()
+                        Text("Round \(round.order + 1) of \(viewModel.totalRounds)")
+                            .font(.onest(11.5))
+                            .foregroundStyle(DesignTokens.inkFaint)
+                    }
+                    RoundProgressBar(total: viewModel.totalRounds, currentOrder: round.order)
                 }
-                roundProgress(currentOrder: round.order)
+                .padding(.bottom, 28)
             }
 
             Spacer()
 
-            VStack(spacing: 14) {
+            VStack(spacing: 16) {
                 InterviewerPortraitView()
-                    .frame(width: 148, height: 148)
-                Text("Alex · your interviewer").font(.onest(12, .semibold)).foregroundStyle(DesignTokens.inkSoft)
+                    .frame(width: 168, height: 168)
+                    .clipShape(RoundedRectangle(cornerRadius: 44))
+                    .shadow(color: .black.opacity(0.08), radius: 12, y: 6)
+                Text("Alex · your interviewer").font(.onest(13, .semibold)).foregroundStyle(DesignTokens.inkFaint)
 
                 if let question = viewModel.messages.last {
                     Text(question.content.isEmpty ? "…" : question.content)
                         .font(.onest(16))
                         .foregroundStyle(DesignTokens.ink)
-                        .padding(16)
-                        .background(DesignTokens.surface, in: RoundedRectangle(cornerRadius: 16))
+                        .lineSpacing(4)
+                        .padding(18)
+                        .padding(.trailing, 20)
                         .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(DesignTokens.surfaceSunken, in: RoundedRectangle(cornerRadius: 16))
+                        .overlay(RoundedRectangle(cornerRadius: 16).stroke(DesignTokens.line, lineWidth: 1))
+                        .overlay(alignment: .topTrailing) {
+                            NarratorSpeakerButton(narrator: viewModel.narrator).padding(10)
+                        }
                 }
             }
 
@@ -41,30 +54,15 @@ struct QuestionRevealView: View {
                 viewModel.proceedToRound()
             } label: {
                 Text("I'm ready to answer →")
-                    .font(.onest(15, .bold))
-                    .foregroundStyle(DesignTokens.onAccent)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 4)
             }
-            .buttonStyle(.borderedProminent)
-            .tint(DesignTokens.accent)
+            .buttonStyle(.ggPrimary)
             .disabled(viewModel.isStreaming)
         }
-        .padding()
+        .padding(20)
         .background(DesignTokens.bg.ignoresSafeArea())
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $viewModel.limitReached) { PaywallView() }
-    }
-
-    private func roundProgress(currentOrder: Int) -> some View {
-        HStack(spacing: 6) {
-            ForEach(0..<viewModel.totalRounds, id: \.self) { index in
-                Capsule()
-                    .fill(index < currentOrder ? DesignTokens.success : (index == currentOrder ? DesignTokens.accent : DesignTokens.line))
-                    .frame(height: 5)
-            }
-        }
     }
 }
 
