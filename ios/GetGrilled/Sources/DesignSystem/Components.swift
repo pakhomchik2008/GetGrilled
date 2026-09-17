@@ -76,6 +76,7 @@ struct SegmentedControl<Option: Hashable>: View {
 /// fade, so the press reads as physical contact — and springs back rather than cutting.
 struct PrimaryButtonStyle: ButtonStyle {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.isEnabled) private var isEnabled
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -84,7 +85,7 @@ struct PrimaryButtonStyle: ButtonStyle {
             .padding(.vertical, 14)
             .foregroundStyle(DesignTokens.onAccent)
             .background(DesignTokens.accent, in: RoundedRectangle(cornerRadius: 12))
-            .opacity(configuration.isPressed ? 0.85 : 1)
+            .opacity(!isEnabled ? 0.5 : (configuration.isPressed ? 0.85 : 1))
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
             .animation(MotionTokens.momentum(reduceMotion: reduceMotion), value: configuration.isPressed)
     }
@@ -93,6 +94,7 @@ struct PrimaryButtonStyle: ButtonStyle {
 /// `.btn-secondary` — sunken surface button with a hairline border.
 struct SecondaryButtonStyle: ButtonStyle {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.isEnabled) private var isEnabled
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -102,7 +104,7 @@ struct SecondaryButtonStyle: ButtonStyle {
             .foregroundStyle(DesignTokens.ink)
             .background(DesignTokens.surfaceSunken, in: RoundedRectangle(cornerRadius: 12))
             .overlay(RoundedRectangle(cornerRadius: 12).stroke(DesignTokens.line, lineWidth: 1))
-            .opacity(configuration.isPressed ? 0.85 : 1)
+            .opacity(!isEnabled ? 0.5 : (configuration.isPressed ? 0.85 : 1))
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
             .animation(MotionTokens.momentum(reduceMotion: reduceMotion), value: configuration.isPressed)
     }
