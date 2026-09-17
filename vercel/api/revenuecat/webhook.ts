@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { setSubscriptionStatus } from "../../lib/sessions.js";
+import { ensureUserRow, setSubscriptionStatus } from "../../lib/sessions.js";
 
 // RevenueCat calls this with the "Authorization Header Value" you set in
 // RevenueCat > Project settings > Webhooks. Not a user JWT — a shared secret.
@@ -43,6 +43,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
   // app_user_id is the Supabase auth uid the iOS client passes to Purchases.configure/logIn.
   const userId = event.app_user_id;
+
+  // setSubscriptionStatus is an UPDATE — a no-op if this account has never created a session
+  // yet, which is very possible: a candidate could subscribe before ever starting a round.
+  if (PAID_EVENT_TYPES.has(event.type) || FREE_EVENT_TYPES.has(event.type)) {
+    await ensureUserRow(userId, null);
+  }
 
   if (PAID_EVENT_TYPES.has(event.type)) {
     await setSubscriptionStatus(userId, "paid");
