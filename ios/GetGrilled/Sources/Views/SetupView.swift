@@ -2,11 +2,13 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct SetupView: View {
+    private enum JobMethod: Equatable { case pdf, link, text }
+
     @ObservedObject var viewModel: RoundSessionViewModel
     @State private var jobLinkText = ""
     @State private var showingPDFPicker = false
-    @State private var showingTextPaste = false
     @State private var pastedJobText = ""
+    @State private var selectedMethod: JobMethod?
 
     var body: some View {
         ScrollView {
@@ -59,7 +61,10 @@ struct SetupView: View {
                     Text("Start interview")
                 }
                 .buttonStyle(.ggPrimary)
-                .disabled(viewModel.roleTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .disabled(
+                    viewModel.roleTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        || viewModel.jobContext.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                )
 
                 Text("3 rounds · Intro → Technical → Behavioral")
                     .font(.onest(12))
@@ -95,8 +100,8 @@ struct SetupView: View {
 
     private var jobPostingSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            FieldLabel("Job posting (optional)")
-            Text("Paste the role's job link (LinkedIn, Greenhouse, etc.), attach a PDF, or paste the text — helps tailor questions to the actual role.")
+            FieldLabel("About the role")
+            Text("Pick one — the interviewer tailors its questions to the real job instead of guessing.")
                 .font(.onest(11.5))
                 .foregroundStyle(DesignTokens.inkFaint)
 
@@ -105,34 +110,40 @@ struct SetupView: View {
                     Image(systemName: "doc.text.fill").foregroundStyle(DesignTokens.success)
                     Text(label).font(.onest(13)).foregroundStyle(DesignTokens.ink).lineLimit(1)
                     Spacer()
-                    Button { viewModel.clearJobContext() } label: {
+                    Button {
+                        viewModel.clearJobContext()
+                        selectedMethod = nil
+                    } label: {
                         Image(systemName: "xmark.circle.fill").foregroundStyle(DesignTokens.inkFaint)
                     }
                 }
                 .fakeFieldStyle()
             } else {
-                HStack(spacing: 8) {
-                    TextField("Paste job link…", text: $jobLinkText)
-                        .textFieldStyle(.plain)
-                        .font(.onest(13))
-                        .fakeFieldStyle()
-                        .keyboardType(.URL)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .submitLabel(.go)
-                        .onSubmit {
-                            viewModel.attachJobLink(jobLinkText)
-                        }
-
-                    Button {
+                VStack(spacing: 8) {
+                    methodCard(
+                        method: .pdf,
+                        icon: "doc.badge.plus",
+                        title: "PDF of the posting",
+                        subtitle: "Attach a file from Files"
+                    ) {
+                        selectedMethod = .pdf
                         showingPDFPicker = true
-                    } label: {
-                        Image(systemName: "doc.badge.plus")
-                            .font(.system(size: 16))
-                            .foregroundStyle(DesignTokens.inkSoft)
-                            .frame(width: 44, height: 44)
-                            .background(DesignTokens.surface, in: RoundedRectangle(cornerRadius: 11))
-                            .overlay(RoundedRectangle(cornerRadius: 11).stroke(DesignTokens.line, lineWidth: 1))
+                    }
+                    methodCard(
+                        method: .link,
+                        icon: "link",
+                        title: "Link to the posting",
+                        subtitle: "LinkedIn, HH, Greenhouse, etc."
+                    ) {
+                        selectedMethod = .link
+                    }
+                    methodCard(
+                        method: .text,
+                        icon: "square.and.pencil",
+                        title: "Describe it yourself",
+                        subtitle: "Type the role's key details"
+                    ) {
+                        selectedMethod = .text
                     }
                 }
 
@@ -143,9 +154,29 @@ struct SetupView: View {
                     }
                 }
 
-                if showingTextPaste {
+                if selectedMethod == .link {
+                    HStack(spacing: 8) {
+                        TextField("Paste job link…", text: $jobLinkText)
+                            .textFieldStyle(.plain)
+                            .font(.onest(13))
+                            .fakeFieldStyle()
+                            .keyboardType(.URL)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .submitLabel(.go)
+                            .onSubmit {
+                                viewModel.attachJobLink(jobLinkText)
+                            }
+                        Button("Go") { viewModel.attachJobLink(jobLinkText) }
+                            .font(.onest(13, .semibold))
+                            .foregroundStyle(DesignTokens.accentStrong)
+                            .disabled(jobLinkText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    }
+                }
+
+                if selectedMethod == .text {
                     VStack(alignment: .leading, spacing: 6) {
-                        TextField("Paste the job description text…", text: $pastedJobText, axis: .vertical)
+                        TextField("Type the role's stack, responsibilities, level…", text: $pastedJobText, axis: .vertical)
                             .textFieldStyle(.plain)
                             .font(.onest(13))
                             .lineLimit(4...10)
@@ -153,16 +184,11 @@ struct SetupView: View {
                         Button("Attach this text") {
                             viewModel.attachJobText(pastedJobText)
                             pastedJobText = ""
-                            showingTextPaste = false
                         }
                         .font(.onest(12, .semibold))
                         .foregroundStyle(DesignTokens.accentStrong)
                         .disabled(pastedJobText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
-                } else {
-                    Button("Or paste the description text instead") { showingTextPaste = true }
-                        .font(.onest(11.5))
-                        .foregroundStyle(DesignTokens.accentStrong)
                 }
             }
 
@@ -170,6 +196,33 @@ struct SetupView: View {
                 Text(jobContextError).font(.onest(11)).foregroundStyle(DesignTokens.danger)
             }
         }
+    }
+
+    private func methodCard(method: JobMethod, icon: String, title: String, subtitle: String, action: @escaping () -> Void) -> some View {
+        let isSelected = selectedMethod == method
+        return Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.system(size: 16))
+                    .foregroundStyle(isSelected ? DesignTokens.onAccent : DesignTokens.accentStrong)
+                    .frame(width: 38, height: 38)
+                    .background(isSelected ? DesignTokens.accent : DesignTokens.accentWash, in: RoundedRectangle(cornerRadius: 10))
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(title).font(.onest(13.5, .semibold)).foregroundStyle(DesignTokens.ink)
+                    Text(subtitle).font(.onest(11)).foregroundStyle(DesignTokens.inkFaint)
+                }
+
+                Spacer(minLength: 0)
+
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .foregroundStyle(isSelected ? DesignTokens.accentStrong : DesignTokens.line)
+            }
+            .padding(12)
+            .background(isSelected ? DesignTokens.accentWash : DesignTokens.surface, in: RoundedRectangle(cornerRadius: 13))
+            .overlay(RoundedRectangle(cornerRadius: 13).stroke(isSelected ? DesignTokens.accentStrong : DesignTokens.line, lineWidth: isSelected ? 1.5 : 1))
+        }
+        .buttonStyle(.plain)
     }
 }
 
