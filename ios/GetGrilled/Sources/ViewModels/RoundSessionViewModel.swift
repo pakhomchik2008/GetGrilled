@@ -6,6 +6,7 @@ import UIKit
 final class RoundSessionViewModel: ObservableObject {
     enum Phase: Equatable {
         case setup
+        case jobContext
         case question
         case round
         case selfEval
@@ -66,10 +67,21 @@ final class RoundSessionViewModel: ObservableObject {
     }
 
     /// Entry point for the manual Setup form — ensures we're not accidentally still tied to a
-    /// previous plan stage.
+    /// previous plan stage. Role/level are set; job context (mandatory) is collected on its own
+    /// screen next.
     func startManualSession() {
         planStageId = nil
+        phase = .jobContext
+    }
+
+    /// From the job-context picker, once one of PDF/link/text is attached.
+    func confirmJobContext() {
         startSession()
+    }
+
+    /// Back from the job-context picker — keeps whatever's already typed in Setup's fields.
+    func backToSetupFields() {
+        phase = .setup
     }
 
     /// "Back to dashboard" from the summary screen. Role/seniority/focus notes are left as-is
