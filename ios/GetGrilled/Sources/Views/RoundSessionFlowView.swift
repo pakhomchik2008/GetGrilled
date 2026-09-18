@@ -9,7 +9,7 @@ struct RoundSessionFlowView: View {
     private var showsExitButton: Bool {
         switch viewModel.phase {
         case .question, .round, .selfEval, .evaluatingRound: return true
-        case .setup, .summary: return false
+        case .setup, .jobContext, .summary: return false
         }
     }
 
@@ -59,6 +59,8 @@ struct RoundSessionFlowView: View {
         switch viewModel.phase {
         case .setup:
             SetupView(viewModel: viewModel)
+        case .jobContext:
+            JobContextPickerView(viewModel: viewModel)
         case .question:
             QuestionRevealView(viewModel: viewModel)
         case .round, .evaluatingRound:
