@@ -69,7 +69,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     }
 
     const completedAt = nowIso();
-    await setStatus(sessionId, "completed", completedAt);
+    await setStatus(sessionId, "completed", completedAt, overallSummary);
     if (session.plan_stage_id) {
       await markStageCompleted(session.plan_stage_id, sessionId);
     }

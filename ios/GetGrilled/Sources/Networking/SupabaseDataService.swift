@@ -8,12 +8,16 @@ struct SupabaseDataService {
         await SupabaseAuthProvider.shared.client
     }
 
-    func listSessions() async throws -> [SessionSummary] {
+    /// v2 (round-based) sessions only — `mode` is set for every session created since the
+    /// redesign; legacy single-question sessions (mode IS NULL) are excluded, they have no
+    /// role_title/rounds to group or show here.
+    func listV2Sessions() async throws -> [V2SessionSummary] {
         _ = try await SupabaseAuthProvider.shared.ensureSession()
         let client = await self.client()
         return try await client
             .from("interview_sessions")
-            .select("id, difficulty, status, started_at, completed_at, session_feedback(*)")
+            .select("id, role_title, seniority, mode, status, started_at, completed_at, overall_summary, session_rounds(round_type, round_order, status, self_eval, feedback_status, feedback_notes)")
+            .isDistinct("mode", value: "null")
             .order("started_at", ascending: false)
             .execute()
             .value

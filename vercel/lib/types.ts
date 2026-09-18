@@ -58,6 +58,8 @@ export interface InterviewSessionRow {
   plan_stage_id: string | null;
   /** Text pulled from an attached job-posting PDF or link — tone/domain context only. */
   job_context: string | null;
+  /** The synthesized cross-round summary from session/finish — null until the session completes. */
+  overall_summary: string | null;
 }
 
 export interface SessionRoundRow {

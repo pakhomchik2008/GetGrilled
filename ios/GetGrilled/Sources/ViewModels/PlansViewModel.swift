@@ -50,7 +50,7 @@ final class PlansViewModel: ObservableObject {
                 load()
                 onDone()
             } catch {
-                errorMessage = "Couldn't generate the plan: \(error.localizedDescription)"
+                errorMessage = error.localizedDescription
             }
         }
     }
