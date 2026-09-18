@@ -7,6 +7,9 @@ struct SessionSummaryView: View {
     let rounds: [SessionRoundSummary]
     let overallSummary: String
     var onBackToDashboard: () -> Void = {}
+    /// False when this is being reused as a read-only History detail — there's nothing to "go
+    /// back" to (no live round flow underneath), a plain nav-stack pop covers it.
+    var showsFooterButton: Bool = true
 
     var body: some View {
         ScrollView {
@@ -32,12 +35,14 @@ struct SessionSummaryView: View {
                 .background(DesignTokens.accentWash, in: RoundedRectangle(cornerRadius: 14))
                 .overlay(RoundedRectangle(cornerRadius: 14).stroke(DesignTokens.line, lineWidth: 1))
 
-                Button {
-                    onBackToDashboard()
-                } label: {
-                    Text("Back to dashboard")
+                if showsFooterButton {
+                    Button {
+                        onBackToDashboard()
+                    } label: {
+                        Text("Back to dashboard")
+                    }
+                    .buttonStyle(.ggPrimary)
                 }
-                .buttonStyle(.ggPrimary)
             }
             .padding(20)
         }

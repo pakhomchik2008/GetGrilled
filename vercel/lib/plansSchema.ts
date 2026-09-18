@@ -6,16 +6,41 @@ function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
 
+// Some models occasionally double-encode a tool's array field — instead of
+// `{"stages": [...]}` they return `{"stages": "{\"stages\":[...]}"}` (or `{"stages": "[...]"}`),
+// a JSON string standing in for the array. Recover the real array from either shape rather
+// than failing the whole generation over what's still perfectly usable model output.
+function coerceStagesArray(rawStages: unknown): unknown {
+  if (Array.isArray(rawStages)) {
+    return rawStages;
+  }
+  if (typeof rawStages === "string") {
+    try {
+      const parsed = JSON.parse(rawStages);
+      if (Array.isArray(parsed)) {
+        return parsed;
+      }
+      if (typeof parsed === "object" && parsed !== null && Array.isArray((parsed as Record<string, unknown>).stages)) {
+        return (parsed as Record<string, unknown>).stages;
+      }
+    } catch {
+      // fall through to the caller's own error
+    }
+  }
+  return rawStages;
+}
+
 // Validates the raw `submit_plan_stages` tool input into a stage list ready to insert.
 export function parsePlanStages(input: unknown): StageInput[] {
   if (typeof input !== "object" || input === null) {
     throw new PlanParseError("Plan stages input is not an object");
   }
   const record = input as Record<string, unknown>;
-  if (!Array.isArray(record.stages) || record.stages.length < 1) {
+  const stages = coerceStagesArray(record.stages);
+  if (!Array.isArray(stages) || stages.length < 1) {
     throw new PlanParseError("Field stages must be a non-empty array");
   }
-  return record.stages.map((stage, index) => {
+  return stages.map((stage, index) => {
     if (typeof stage !== "object" || stage === null) {
       throw new PlanParseError(`Stage at index ${index} is not an object`);
     }

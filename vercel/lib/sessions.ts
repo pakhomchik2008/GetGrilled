@@ -130,9 +130,15 @@ export async function setQuestionText(sessionId: string, questionText: string): 
   if (error) throw error;
 }
 
-export async function setStatus(sessionId: string, status: SessionStatus, completedAt?: string): Promise<void> {
+export async function setStatus(
+  sessionId: string,
+  status: SessionStatus,
+  completedAt?: string,
+  overallSummary?: string
+): Promise<void> {
   const patch: Record<string, unknown> = { status };
   if (completedAt) patch.completed_at = completedAt;
+  if (overallSummary) patch.overall_summary = overallSummary;
   const { error } = await supabaseAdmin.from("interview_sessions").update(patch).eq("id", sessionId);
   if (error) throw error;
 }
