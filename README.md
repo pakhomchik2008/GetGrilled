@@ -1,41 +1,38 @@
 # GetGrilled
 
-AI-тренажёр технических собеседований (iOS, MVP).
+AI-powered technical interview trainer (iOS, MVP).
 
-## Структура репо
+## What it is
 
-- `ios/` — SwiftUI-приложение. Проект сгенерирован из `ios/project.yml`
-  через [xcodegen](https://github.com/yonaskolb/XcodeGen); `.xcodeproj` не
-  коммитится, генерируй локально: `cd ios && xcodegen generate`, затем
-  открой `GetGrilled.xcodeproj`.
-- `vercel/` — serverless API-слой (TypeScript). Весь LLM-трафик и запись в
-  Supabase идут отсюда, никогда напрямую с клиента.
-- `supabase/migrations/` — схема БД как код (SQL).
-- `docs/` — черновики (системный промпт интервьюера и т.д.).
+Practice technical interviews with an AI interviewer that asks follow-up questions, grades your answers against a rubric, and tracks progress across sessions.
 
-## Локальный запуск
+## Repo layout
+
+- `ios/` — SwiftUI app. Generated from `ios/project.yml` via [XcodeGen](https://github.com/yonaskolb/XcodeGen); `.xcodeproj` is not committed — generate it locally with `cd ios && xcodegen generate`, then open `GetGrilled.xcodeproj`.
+- `vercel/` — serverless API layer (TypeScript). All LLM traffic and Supabase writes go through here, never directly from the client.
+- `supabase/migrations/` — database schema as code (SQL).
+- `docs/` — design spec, interviewer system-prompt draft, and the design-system PDF.
+
+## Running locally
 
 ### iOS
-```
+```bash
 cd ios
 xcodegen generate
 open GetGrilled.xcodeproj
 ```
 
 ### Vercel API
-```
+```bash
 cd vercel
 npm install
-cp .env.example .env.local   # заполнить реальными ключами, не коммитить
+cp .env.example .env.local   # fill in real keys, never commit this file
 npm run dev
 ```
 
 ### Supabase
-Миграции в `supabase/migrations/` — применить через Supabase CLI
-(`supabase db push`) или вставить вручную в SQL editor проекта.
+Apply migrations in `supabase/migrations/` via the Supabase CLI (`supabase db push`) or paste them into the project's SQL editor.
 
-## Секреты
+## Secrets
 
-LLM API key и Supabase service role key живут только в переменных
-окружения Vercel (prod) и `.env.local` (dev, в `.gitignore`). Никогда не
-коммитятся, никогда не попадают в клиент.
+The LLM API key and the Supabase service-role key live only in Vercel environment variables (prod) and `.env.local` (dev, gitignored). Never committed, never reach the client.
